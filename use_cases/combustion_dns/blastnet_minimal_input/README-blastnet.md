@@ -1,6 +1,6 @@
 # BlastNet → WELL format (example)
 
-This folder is a **small, self-contained copy** of two BlastNet dataset families plus the full `convert_to_well_format.py` used for the COMB-FLOW-UNI conversion pipeline. Use it to demo conversion for an agentic data team or to smoke-test the script without touching the full `blastnet_data` tree.
+This folder is a **small, self-contained copy** of two BlastNet dataset families plus the full `convert_to_well_format.py` used for the conversion pipeline. Use it to demo conversion for an agentic data team or to smoke-test the script without touching the full `blastnet_data` tree.
 
 ## Layout
 
@@ -59,7 +59,7 @@ From this directory, defaults are `--base-path ./blastnet_data` and `--output-pa
 **Dry run (no HDF5 written):**
 
 ```bash
-cd /lus/flare/projects/COMB-FLOW-UNI/Kiran/Data_conversion_example
+cd <example_dir>
 
 python3 convert_to_well_format.py --dataset lifted_hydrogen_jet --dry-run
 python3 convert_to_well_format.py --dataset nonreacting_channel_flow --dry-run
@@ -88,8 +88,8 @@ python3 convert_to_well_format.py --dataset nonreacting_channel_flow --only-traj
 
 ```bash
 python3 convert_to_well_format.py --dataset premixed_flame_h2air \
-  --base-path /lus/flare/projects/COMB-FLOW-UNI/blastnet_data \
-  --output-path /lus/flare/projects/COMB-FLOW-UNI/blastnet_data/blastnet_data_well_format_complete
+  --base-path <blastnet_root> \
+  --output-path <blastnet_root>/blastnet_data_well_format_complete
 ```
 
 ## PBS batch job
@@ -110,7 +110,7 @@ Channel-flow trajectories here are **very large** on disk (order \(10^2\) GB p
 
 The canonical copy of the converter (and the full converted HDF5 library) lives under:
 
-`/lus/flare/projects/COMB-FLOW-UNI/blastnet_data/convert_to_well_format.py`  
-`/lus/flare/projects/COMB-FLOW-UNI/blastnet_data/blastnet_data_well_format_complete/`
+`<blastnet_root>/convert_to_well_format.py`  
+`<blastnet_root>/blastnet_data_well_format_complete/`
 
 This example’s script is the same logic with **local default paths**, optional **`--only-trajectories`**, and the same **`--dataset`** / **`--dry-run`** interface.
