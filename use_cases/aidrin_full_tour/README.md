@@ -157,7 +157,7 @@ Search for a skill that can generate a datacard for data/adult.csv, then use it 
 datacard — incorporating the readiness findings above.
 ```
 
-The agent discovers the `datacard-generator` skill and writes a datacard (e.g.
+The agent discovers the `datacard-generator` skill and writes a Genesis Datacard (e.g.
 `data/genesis_datacard_*.md`) documenting the dataset and its readiness profile.
 
 ### 5. Reconstruct the pipeline

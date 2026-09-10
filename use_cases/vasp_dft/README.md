@@ -249,6 +249,6 @@ reused across projects; delete it to force a fresh clone.
   broader slab/bulk converter that needs `vasprun.xml`-bearing slab or bulk data.
   It is a reference for what the agent-authored skill in step 5 can grow into,
   not something this demo's data exercises.
-- Sister demo: [`skill_catalog_curation`](../skill_catalog_curation/) exercises the same catalog →
+- Sister demo: [`genesis_skills`](../genesis_skills/) exercises the same catalog →
   install → native loop plus KB domain ingest and datacard generation, against
-  the `genesis` (OSTI GitLab) source.
+  the Genesis (OSTI GitLab) source.
