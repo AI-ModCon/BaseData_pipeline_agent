@@ -2,8 +2,8 @@
 title: BlastNet → WELL Conversion
 domain: Combustion CFD — BlastNet DNS trajectories to the WELL HDF5 format
 summary: >-
-  Develop a BlastNet-to-WELL converter from the format documents: ingest the
-  specifications into the knowledge base, author a conversion skill, register
+  Develop a BlastNet-to-WELL converter from the format documents: author a
+  conversion skill that carries the specifications as references, register
   the agent-written converter and a checker as codes, convert a sample
   trajectory with provenance, and iterate against a holdout reference until
   the check passes.
@@ -33,7 +33,7 @@ Folder contents:
 
 | Path | Role in the demo |
 |------|------------------|
-| [`docs/well_format.md`](docs/well_format.md), [`docs/blastnet_layout.md`](docs/blastnet_layout.md) | the two specifications the agent works from |
+| [`docs/well_format.md`](docs/well_format.md), [`docs/blastnet_layout.md`](docs/blastnet_layout.md) | the two specifications the agent works from; they become the skill's `references/` |
 | [`scripts/check_well_output.py`](scripts/check_well_output.py) | the checker: compares a candidate WELL file to a reference (structure, shapes, values) |
 | [`scripts/make_demo_subset.py`](scripts/make_demo_subset.py) | builds the demo data bundle from a full trajectory |
 | [`reference/`](reference/) | the converter this workflow produced, its earlier versions, and the validation reports — a reference solution, not an input to the demo |
@@ -76,37 +76,16 @@ The converter is deliberately not copied in. The agent writes it.
 
 Paste these prompts one at a time.
 
-### 1. Ingest the format specifications
+### 1. Author the conversion skill from the specifications
 
 ```text
-Ingest docs/ into the knowledge base as a collection called "well_format". It
-holds the WELL HDF5 format specification and the BlastNet dataset layout.
-```
-
-**Verify:** `List all knowledge base collections.` → `well_format`.
-
-### 2. Query the mapping rules
-
-```text
-From the well_format collection: how does a BlastNet trajectory map onto a
-WELL file? Cover the field-name mapping, which fields go into t0_fields versus
-t1_fields, how the grid and time arrays are derived, how boundary conditions
-are represented, and which root attributes are required.
-```
-
-**Expect:** scalar fields (pressure, density, temperature, species mass
-fractions as `mass_fraction_*`) in `t0_fields/`, velocity stacked as a vector
-in `t1_fields/`, per-type mask groups under `boundary_conditions/`, coordinate
-arrays from the grid files, time from `info.json`, and the root attributes
-`dataset_name`, `grid_type`, `n_spatial_dims`, `n_trajectories`,
-`simulation_parameters`.
-
-### 3. Author the conversion skill
-
-```text
-Use the skill-creator skill to author a project skill named "blastnet-to-well".
-Its SKILL.md should state the mapping rules you just retrieved, citing the
-well_format collection. Under its scripts/ directory write
+Read docs/well_format.md (the WELL HDF5 format) and docs/blastnet_layout.md
+(the BlastNet trajectory layout). Then use the skill-creator skill to author a
+project skill named "blastnet-to-well". Its SKILL.md states the mapping rules:
+the field-name mapping, which fields go into t0_fields versus t1_fields, how
+the grid and time arrays are derived, how boundary conditions are represented,
+and which root attributes are required. Copy both documents into the skill's
+references/ directory. Under its scripts/ directory write
 convert_to_well_format.py: a command-line converter taking a positional
 BlastNet trajectory directory and the options --output-file and --dry-run,
 reading info.json for dimensions, variables, snapshot ids, and grid paths, and
@@ -114,10 +93,16 @@ writing one WELL HDF5 file. Save it with save_skill.
 ```
 
 **Expect:** `save_skill` writes `<project>/skills/blastnet-to-well/` with a
-`SKILL.md` and `scripts/convert_to_well_format.py`, mirrored into the agent's
-native skills directory.
+`SKILL.md`, the two documents under `references/`, and
+`scripts/convert_to_well_format.py`, mirrored into the agent's native skills
+directory. The rules in `SKILL.md` should cover: scalar fields (pressure,
+density, temperature, species mass fractions as `mass_fraction_*`) in
+`t0_fields/`, velocity stacked as a vector in `t1_fields/`, per-type mask
+groups under `boundary_conditions/`, coordinate arrays from the grid files,
+time from `info.json`, and the root attributes `dataset_name`, `grid_type`,
+`n_spatial_dims`, `n_trajectories`, `simulation_parameters`.
 
-### 4. Register the converter and the checker as codes
+### 2. Register the converter and the checker as codes
 
 ```text
 Register two codes. convert-to-well runs
@@ -130,7 +115,7 @@ positional candidate and reference files and the options --rtol, --atol,
 
 **Verify:** `Search the registry for WELL conversion codes.` → both specs under `codes/`.
 
-### 5. Dry run
+### 3. Dry run
 
 ```text
 Do a dry run of convert-to-well on
@@ -141,14 +126,14 @@ size, the number of snapshots, and which WELL fields it would write.
 **Expect:** 1600 × 2000 grid, 3 snapshots, eleven `t0_fields` scalars and a
 2-component velocity; no HDF5 written.
 
-### 6. Convert the trajectory
+### 4. Convert the trajectory
 
 ```text
 Convert data/blastnet_data/lifted_hydrogen_jet/hydrogen-jet-5000 to
 well_output/lifted_hydrogen_jet_traj_5000.hdf5 with the convert-to-well code.
 ```
 
-### 7. Check against the holdout reference and iterate
+### 5. Check against the holdout reference and iterate
 
 ```text
 Spot-check well_output/lifted_hydrogen_jet_traj_5000.hdf5 against
@@ -172,14 +157,14 @@ Each fix is a new version of the script inside the skill, each reconversion
 and check a new record in `trace_archive/`. The loop ends with
 `PASS — candidate matches reference exactly`.
 
-### 8. Generate a datacard
+### 6. Generate a datacard
 
 ```text
 Search for a skill that can generate a datacard for the converted WELL file,
 then use it.
 ```
 
-### 9. Reconstruct the pipeline
+### 7. Reconstruct the pipeline
 
 ```text
 Reconstruct the conversion and validation pipeline from the execution records
@@ -192,29 +177,26 @@ ask the agent to drop the superseded attempts if it includes them.
 
 ## Post-Conditions
 
-1. Knowledge base contains the `well_format` collection with both specification documents.
-2. `skills/blastnet-to-well/` exists with a `SKILL.md` stating the mapping rules and a converter under `scripts/`.
-3. Code registry contains `convert-to-well` and `check-well-output` specs.
-4. `well_output/lifted_hydrogen_jet_traj_5000.hdf5` exists and the full checker run reports an exact match to the holdout reference.
-5. `trace_archive/` holds every converter and checker run, including the failed checks that drove the fixes.
-6. A datacard exists for the converted dataset.
-7. A reconstructed pipeline script replays conversion and validation for a parameterized trajectory directory.
-8. MLflow traces (in the serverless `mlflow.db` store) capture the session —
+1. `skills/blastnet-to-well/` exists with a `SKILL.md` stating the mapping rules, both specifications under `references/`, and a converter under `scripts/`.
+2. Code registry contains `convert-to-well` and `check-well-output` specs.
+3. `well_output/lifted_hydrogen_jet_traj_5000.hdf5` exists and the full checker run reports an exact match to the holdout reference.
+4. `trace_archive/` holds every converter and checker run, including the failed checks that drove the fixes.
+5. A datacard exists for the converted dataset.
+6. A reconstructed pipeline script replays conversion and validation for a parameterized trajectory directory.
+7. MLflow traces (in the serverless `mlflow.db` store) capture the session —
    `mlflow ui --backend-store-uri sqlite:///$PROJ/mlflow.db`.
 
 ## What This Tests
 
 | DSAgt Capability | Steps |
 |------------------|-------|
-| Knowledge ingestion of format specifications | 1 |
-| Semantic search for schema rules | 2 |
-| Skill authoring with `skill-creator` and `save_skill`, grounded in the KB | 3 |
-| Agent-written code from documentation | 3 |
-| Code registration (`save_code_spec`) and registry search | 4 |
-| Code execution with provenance through `dsagt-run` | 5–7 |
-| Check-driven iteration with failed runs on the record | 7 |
-| Skill discovery and use (datacard generation) | 8 |
-| Pipeline reconstruction with a parameterized input | 9 |
+| Skill authoring with `skill-creator` and `save_skill`, carrying its source documents as references | 1 |
+| Agent-written code from documentation | 1 |
+| Code registration (`save_code_spec`) and registry search | 2 |
+| Code execution with provenance through `dsagt-run` | 3–5 |
+| Check-driven iteration with failed runs on the record | 5 |
+| Skill discovery and use (datacard generation) | 6 |
+| Pipeline reconstruction with a parameterized input | 7 |
 
 ## Cleanup
 
@@ -227,7 +209,7 @@ rm combustion_simulation_data.tar.gz
 
 - [`reference/convert_to_well_format.py`](reference/convert_to_well_format.py)
   is the converter this workflow produced, verified against the holdout file.
-  Compare the agent's converter to it after step 7, not before.
+  Compare the agent's converter to it after step 5, not before.
 - The demo bundle is the first three snapshots of the `hydrogen-jet-5000`
   trajectory (a full trajectory is ~32 GB) with the reference WELL file sliced
   to the same steps, built with
