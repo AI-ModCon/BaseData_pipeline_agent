@@ -2,10 +2,11 @@
 title: VASP DFT → AI-Ready Records
 domain: Materials science — VASP DFT output to AI-ready records, via catalog skills and a registered code
 summary: >-
-  Convert VASP DFT output into AI-ready records two ways — the agent
-  discovers, installs, and authors pymatgen-based skills to convert a small
-  slab calculation, then registers a NEB converter as a code and runs it with
-  provenance against a five-image NEB fixture (no DFT run, no HPC).
+  Convert VASP DFT output into AI-ready records — the agent discovers and
+  installs a pymatgen skill from a catalog, authors a converter skill for a
+  slab calculation, extends it to nudged-elastic-band calculations, registers
+  that converter as a code, and runs it with provenance against a reference
+  record (no DFT run, no HPC).
 status: published
 order: 30
 ---
@@ -24,16 +25,24 @@ through both of DSAgt's extension mechanisms:
    catalog, installs its `pymatgen` skill, and uses the built-in `skill-creator`
    to author a `vasp-to-isaac` skill whose converter parses VASP output with
    `pymatgen.io.vasp`. It runs that skill on a small slab calculation.
-2. **Codes.** The agent registers the [`vasp_neb_to_isaac.py`](vasp_neb_to_isaac.py)
-   converter as a code and runs it through `dsagt-run` on a five-image
-   nudged-elastic-band (NEB) calculation, so the execution is captured in
-   `trace_archive/` and can be reconstructed.
+2. **Codes.** The agent extends its skill with a converter for nudged-elastic-band
+   (NEB) calculations, registers that converter as a code, and runs it through
+   `dsagt-run` on a five-image NEB fixture, so the execution is captured in
+   `trace_archive/` and can be reconstructed. A reference record is the oracle.
 
 Both parts use real `pymatgen.io.vasp` parsing. The slab data is a mock: valid
 VASP format with the OUTCAR reduced to the lines pymatgen reads. The NEB data is
-a fixture from the pymatgen test suite. The reference outputs
-(`expected_isaac_record.json` for the slab, [`isaac_neb_record.json`](isaac_neb_record.json)
-for the NEB) let you check the agent's results.
+a fixture from the pymatgen test suite. Reference outputs for both
+(`expected_isaac_record.json` for the slab, `isaac_neb_record.json` for the NEB)
+come with the data, so the agent's records can be checked.
+
+Folder contents:
+
+| Path | Role in the demo |
+|------|------------------|
+| [`reference/vasp_neb_to_isaac.py`](reference/vasp_neb_to_isaac.py) | a converter that produces the NEB reference record — a reference solution, not an input |
+| [`reference/isaac_neb_record.json`](reference/isaac_neb_record.json) | the NEB reference record (also in the data bundle) |
+| [`reference/skills/vasp-to-isaac/`](reference/skills/vasp-to-isaac/) | a broader slab/bulk converter skill for `vasprun.xml`-bearing data; what the agent-authored skill can grow into |
 
 ## Prerequisites
 
@@ -63,12 +72,10 @@ mkdir -p "$PROJ/data"
 # (https://drive.google.com/drive/folders/1RWQAJeHaikIaD7CCf8ciJ71m55S1erp6):
 # the NEB fixture, then the mock slab and its expected record.
 curl -L "https://drive.usercontent.google.com/download?id=1uH0r7ryF9nUJaE1fxXZMAzBjiE4TXxWu&export=download&confirm=t" -o neb_fixture.tar.gz
-tar xzf neb_fixture.tar.gz -C "$PROJ/data" --strip-components=1 isaac_vasp/neb
+tar xzf neb_fixture.tar.gz -C "$PROJ/data" --strip-components=1 isaac_vasp/neb isaac_vasp/isaac_neb_record.json
 curl -L "https://drive.usercontent.google.com/download?id=19PNObF-FZkGITNJ_VIZH8j9BHWSqRPrH&export=download&confirm=t" -o slab_fixture.tar.gz
 tar xzf slab_fixture.tar.gz -C "$PROJ/data" --strip-components=2 isaac_skills_demo/mock_data
-# $PROJ/data now holds neb/, mock_slab/, expected_isaac_record.json
-mkdir -p "$PROJ/codes/scripts"
-cp use_cases/vasp_dft/vasp_neb_to_isaac.py "$PROJ/codes/scripts/"
+# $PROJ/data now holds neb/, isaac_neb_record.json, mock_slab/, expected_isaac_record.json
 dsagt start isaac-vasp                        # mirrors the built-in skill-creator into the agent's native skills dir
 ```
 
@@ -147,33 +154,40 @@ Invoke the vasp-to-isaac skill on data/mock_slab/ and write the result to audit/
 energy ≈ -132.8421 eV (`Outcar.final_energy`), 12 atoms (`Poscar`), ENCUT 520 /
 NSW 50 (`Incar`), total mag ≈ 8.0123 (`Outcar.total_mag`) — matching the reference.
 
-### 7. Register the NEB converter as a code
+### 7. Extend the skill to NEB calculations and register the converter
 
 ```text
-Register a code named vasp-neb-to-isaac. Its executable is
-`python codes/scripts/vasp_neb_to_isaac.py`, which takes a positional NEB
-directory argument (containing 00/, 01/, ... image subdirs) and an optional
-`--output` path. Run it with `--help` first to confirm the interface, then save
-the code spec with the positional `neb_dir` and the `--output` option.
+Extend the vasp-to-isaac skill with a second converter,
+scripts/vasp_neb_to_isaac.py, for nudged-elastic-band calculations. It takes a
+positional NEB directory containing 00/, 01/, ... image subdirectories and an
+--output path, parses each image's OUTCAR with pymatgen.io.vasp.Outcar, and
+writes an ISAAC v1.05 record whose computation block records the NEB method,
+the number of intermediate images, and the reaction, and whose measurement
+block carries the energy series along the path. Target the shape of
+data/isaac_neb_record.json. Update SKILL.md to describe both converters. Then
+register the new script as a code named vasp-neb-to-isaac with the positional
+neb_dir and the --output option; run it with --help first.
 ```
 
 **Verify:** `Search the registry for the vasp-neb-to-isaac code.` →
 `$PROJ/codes/vasp-neb-to-isaac/SKILL.md` should exist.
 
-### 8. Run the conversion through dsagt-run
+### 8. Run the conversion through dsagt-run and check it
 
 ```text
-Using the registered vasp-neb-to-isaac code, convert the NEB calculation in
-data/neb/ and write the ISAAC record to data/isaac_neb_record.json. Use the
-exact dsagt-run command from the spec so the execution is recorded. Then tell me
-the record's reaction-energy / barrier fields and how many images it summarized.
+Using the registered vasp-neb-to-isaac code and the exact dsagt-run command
+from its spec, convert data/neb/ and write the record to data/neb_record.json.
+Compare it against data/isaac_neb_record.json: report differences in structure
+and in the computation and measurement blocks, fix the converter, and rerun
+through the code until they agree on the method, image count, reaction, and
+energy series.
 ```
 
-**Expect:** the agent runs `dsagt-run --code vasp-neb-to-isaac -- python
-codes/scripts/vasp_neb_to_isaac.py data/neb/ --output data/isaac_neb_record.json`,
-pymatgen parses the five OUTCARs, and a v1.05 ISAAC record lands with the
-`computation` / `measurement` blocks populated (5 NEB images). Compare against the
-reference [`isaac_neb_record.json`](isaac_neb_record.json) in this folder.
+**Expect:** `dsagt-run --code vasp-neb-to-isaac -- ...` runs land in
+`trace_archive/`; pymatgen parses the five OUTCARs (endpoints plus three
+intermediate images); the final record's `computation.transition_state` has
+`method: NEB`, `images: 3`, and the Fe vacancy-migration reaction, and its
+`measurement.series` carries the five-point energy path, matching the reference.
 
 ### 9. Reconstruct the pipeline
 
@@ -202,9 +216,11 @@ ls "$PROJ/audit/" "$PROJ/trace_archive/"
    `pymatgen.io.vasp`, exists and is natively discoverable.
 4. `audit/mock_slab_isaac.json` was produced from the mock slab directory and
    matches the ISAAC shape and values.
-5. Code registry contains the `vasp-neb-to-isaac` spec (`codes/vasp-neb-to-isaac/SKILL.md`).
-6. `data/isaac_neb_record.json` is a valid ISAAC v1.05 record matching the shape
-   of the reference, and `trace_archive/` holds the conversion's provenance record.
+5. The `vasp-to-isaac` skill has a second script, `vasp_neb_to_isaac.py`, and
+   the code registry contains the `vasp-neb-to-isaac` spec.
+6. `data/neb_record.json` matches the reference `data/isaac_neb_record.json` in
+   structure and in the computation and measurement blocks, and `trace_archive/`
+   holds every conversion attempt, including any that failed the comparison.
 7. A reconstructed pipeline script replays the conversion.
 8. MLflow traces (in the serverless `mlflow.db` store) capture the session —
    `mlflow ui --backend-store-uri sqlite:///$PROJ/mlflow.db`.
@@ -218,8 +234,9 @@ ls "$PROJ/audit/" "$PROJ/trace_archive/"
 | Catalog search and install (`search_skills`, `install_skill`) | 4 |
 | Skill authoring with `skill-creator` and `save_skill` | 5 |
 | Installed-skill execution | 6 |
+| Agent-written converter from a reference record, added to its own skill | 7 |
 | Code registration (`save_code_spec`) and registry search | 7 |
-| Code execution with provenance through `dsagt-run` | 8 |
+| Code execution with provenance through `dsagt-run`, iterated against a reference | 8 |
 | Pipeline reconstruction | 9 |
 
 ## Cleanup
@@ -240,14 +257,17 @@ reused across projects; delete it to force a fresh clone.
   omitting the SCF/eigenvalue blocks. There is no `vasprun.xml`, so the converter
   takes energy/forces from the OUTCAR.
 - The `neb/` OUTCARs are public pymatgen test fixtures.
+  [`reference/vasp_neb_to_isaac.py`](reference/vasp_neb_to_isaac.py) is a
+  converter that produces the reference record; compare the agent's converter
+  to it after step 8, not before.
 - With the default local embedder (`bge-small`), absolute `search_skills` scores
   are low because short queries under-score long SKILL.md text — the ranking is
   still correct (`pymatgen` first). Set `embedding.backend: api` for sharper
   relevance. With no embedder at all, `search_skills` falls back to keyword
   scoring; `install_skill` and the native mirror are filesystem operations.
-- The [`skills/vasp-to-isaac/`](skills/vasp-to-isaac/) skill in this folder is a
-  broader slab/bulk converter that needs `vasprun.xml`-bearing slab or bulk data.
-  It is a reference for what the agent-authored skill in step 5 can grow into,
+- [`reference/skills/vasp-to-isaac/`](reference/skills/vasp-to-isaac/) is a
+  broader slab/bulk converter skill that needs `vasprun.xml`-bearing slab or
+  bulk data. It is a reference for what the agent-authored skill can grow into,
   not something this demo's data exercises.
 - Sister demo: [`genesis_skills`](../genesis_skills/) exercises the same catalog →
   install → native loop plus KB domain ingest and datacard generation, against
