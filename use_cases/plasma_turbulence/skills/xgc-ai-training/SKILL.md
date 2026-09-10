@@ -129,7 +129,7 @@ python scripts/check_xgc_preprocessed.py <out_dir> [--output audit/step3_post.js
 ## Stage 5 — Dataset Class (library)
 
 `scripts/xgc_dataset.py` provides `XGCGraphDataset`, a PyTorch Dataset
-subclassing `BaseCFDGraphDataset` from the MATEY project.
+subclassing `BaseCFDGraphDataset` from the `graph_datasets` module.
 
 On first use it builds a cached `topology.pt` (edge_index, edge_attr, static
 node context) then reads npz files at getitem time — efficient for large meshes.

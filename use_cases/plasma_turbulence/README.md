@@ -14,11 +14,11 @@ order: 80
 
 > **Estimated time:** ~30 minutes on an HPC login node — not a 10-minute demo.
 > XGC output is HPC-scale ADIOS2 BP5 data (up to ~1.3M mesh nodes), and the
-> scripts require `adios2` and `torch`, plus MATEY's `BaseCFDGraphDataset` for
+> scripts require `adios2` and `torch`, plus the `graph_datasets` module (`BaseCFDGraphDataset`) for
 > the final dataset step. No case is hosted with this demo: point the paths
 > below at your own XGC run.
 
-This guide prepares training data for a plasma foundation model from raw
+This guide prepares training data for machine-learning surrogates of plasma turbulence from raw
 [XGC](https://xgc.pppl.gov/) (X-point Gyrokinetic Code) simulation output. The
 five scripts in [`skills/xgc-ai-training/`](skills/xgc-ai-training/) form a
 check → operate → check pipeline: verify the case structure, summarize its
@@ -44,7 +44,7 @@ for the variable reference. Representative cases:
 - DSAgt installed (`uv sync --all-groups`) and an agent platform installed and
   **already authenticated** (BYOA — dsagt writes no credentials).
 - `adios2` and `torch` importable in the environment `dsagt` runs in, and
-  MATEY's `BaseCFDGraphDataset` for step 6.
+  the `graph_datasets` module that provides `BaseCFDGraphDataset` for step 6.
 - An XGC case directory of your own (the KSTART case in the table above is the
   smallest of the three and the one the expected values below refer to).
 
@@ -62,7 +62,7 @@ PROJ=~/dsagt-projects/xgc-training
 mkdir -p "$PROJ/data"
 ln -s /path/to/your/xgc/<case_dir> "$PROJ/data/<case_dir>"   # or copy it
 mkdir -p "$PROJ/skills"
-cp -r use_cases/fusion-fm/skills/xgc-ai-training "$PROJ/skills/"
+cp -r use_cases/plasma_turbulence/skills/xgc-ai-training "$PROJ/skills/"
 dsagt start xgc-training                       # mirrors the skill into the agent's native skills dir
 ```
 
