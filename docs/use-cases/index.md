@@ -8,6 +8,12 @@ The data for every walkthrough is hosted in the [DSAgt use-case data folder](htt
 
 <!-- USE_CASES_TABLE -->
 
+Each use-case folder is laid out by role: `README.md` is the walkthrough; `docs/`
+holds documents the agent reads; `scripts/` holds code copied into the project;
+`skills/` holds skills copied into the project; `reference/` holds expected outputs
+and reference solutions that are not inputs to the demo. Only the folders a use case
+needs are present.
+
 !!! note "Adding a use case"
     Drop a `README.md` with frontmatter (`title`, `domain`, `summary`) into a
     `use_cases/<name>/` folder — it is auto-added to this table, its body is

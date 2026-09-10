@@ -20,7 +20,7 @@ order: 40
 This guide uses DSAgt to investigate the stability properties of a tokamak
 configuration from linear MHD simulation output produced by the
 [M3D-C1](https://sites.google.com/pppl.gov/m3d-c1) unstructured-mesh
-finite-element code. The Python modules in this folder — `hdf5.py`,
+finite-element code. The Python modules under [`scripts/`](scripts/) — `hdf5.py`,
 `m3dc1_tools.py`, `m3dc1_plots.py`, and the `m3dc1/` wrapper package — provide
 the functions for reading M3D-C1 HDF5 output, evaluating fields from their
 basis-function coefficients, computing equilibrium and spectral quantities, and
@@ -57,19 +57,23 @@ defaults are fine for the rest. Then:
 
 ```bash
 PROJ=~/dsagt-projects/tokamak-stability
-# Demo data (the M3D-C1 simulation output plus this folder's source files) from
-# the DSAgt use-case data folder:
+mkdir -p "$PROJ/data" "$PROJ/skills"
+# Demo data (one M3D-C1 simulation output) from the DSAgt use-case data folder:
 # https://drive.google.com/drive/folders/1RWQAJeHaikIaD7CCf8ciJ71m55S1erp6
 curl -L "https://drive.usercontent.google.com/download?id=1qo-ZG_GoGlZ_X2BjR1fE8zZW3s9K6mTu&export=download&confirm=t" \
   -o tokamak_stability.tar.gz
-tar xzf tokamak_stability.tar.gz -C "$PROJ"   # creates $PROJ/tokamak_stability/{m3dc1_data/, *.py, m3dc1/, skills/}
-export PYTHONPATH=$PROJ/tokamak_stability:$PYTHONPATH   # the m3dc1 wrapper package
-mkdir -p "$PROJ/skills"
-cp -r "$PROJ/tokamak_stability/skills/m3dc1-skill" "$PROJ/skills/"
+tar xzf tokamak_stability.tar.gz -C "$PROJ/data" --strip-components=1 tokamak_stability/m3dc1_data
+cp -r use_cases/tokamak_stability/scripts "$PROJ/scripts"     # the modules, the m3dc1 package, and their tests
+cp -r use_cases/tokamak_stability/skills/m3dc1-skill "$PROJ/skills/"
+export PYTHONPATH=$PROJ/scripts:$PYTHONPATH
+export M3DC1_DATA_DIR=$PROJ/data/m3dc1_data
+python -m pytest "$PROJ/scripts/tests" -q      # checks the environment: failures naming `fpy` mean fusion-io is not importable
 dsagt start tokamak-stability                  # mirrors the skill into the agent's native skills dir
 ```
 
-The same tarball is also available from [OSF](https://osf.io/gak3v/files/).
+The tarball is also available from [OSF](https://osf.io/gak3v/files/). The unit
+tests run without fusion-io or data; the integration tests need both and use
+the data directory named by `M3DC1_DATA_DIR`.
 
 ## Execution
 
@@ -80,9 +84,11 @@ agent so, and you can redirect either in a prompt.
 ### 1. Register the M3D-C1 functions as codes
 
 ```text
-Read the AGENTS.md file in tokamak_stability/. That directory contains three
-Python modules with functions for M3D-C1 HDF5 datasets: hdf5.py,
-m3dc1_tools.py, and m3dc1_plots.py. Following the m3dc1-skill, register these
+The directory scripts/ contains three Python modules with functions for
+M3D-C1 HDF5 datasets — hdf5.py, m3dc1_tools.py, and m3dc1_plots.py — plus the
+m3dc1 wrapper package they use. Before using or registering any of them, read
+the m3dc1-skill (skills/m3dc1-skill/SKILL.md) and its references for the
+calling conventions, input/output formats, and examples. Then register the
 functions as codes and print a summary here.
 ```
 
@@ -95,7 +101,7 @@ Miller-geometry code) carries that option.
 ### 2. Explore the dataset
 
 ```text
-Using your codes, tell me about the data in tokamak_stability/m3dc1_data/.
+Using your codes, tell me about the data in data/m3dc1_data/.
 ```
 
 **Expect:** case metadata, the available time snapshots, and the scalar traces,
@@ -175,6 +181,7 @@ startup files.
 
 | DSAgt Capability | Steps |
 |------------------|-------|
+| Module tests as an environment check before the session | Setup |
 | Skill-guided code creation from Python modules | 1 |
 | Registry search | 1 |
 | Code execution with provenance through `dsagt-run` | 2–6 |

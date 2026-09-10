@@ -43,7 +43,8 @@ Folder contents:
 - DSAgt installed (`uv sync --all-groups`) and an agent platform installed and
   **already authenticated** (BYOA — dsagt writes no credentials; the default
   local embedder needs no API key).
-- `numpy` and `h5py` importable in the environment `dsagt` runs in.
+- `numpy` and `h5py` importable in the environment `dsagt` runs in
+  (`uv sync --all-groups` installs them through the `use-cases` dependency group).
 
 ## Setup
 
@@ -89,7 +90,8 @@ references/ directory. Under its scripts/ directory write
 convert_to_well_format.py: a command-line converter taking a positional
 BlastNet trajectory directory and the options --output-file and --dry-run,
 reading info.json for dimensions, variables, snapshot ids, and grid paths, and
-writing one WELL HDF5 file. Save it with save_skill.
+writing one WELL HDF5 file. The coordinate arrays must be read from the grid
+files that info.json names, not generated. Save it with save_skill.
 ```
 
 **Expect:** `save_skill` writes `<project>/skills/blastnet-to-well/` with a
@@ -120,7 +122,8 @@ positional candidate and reference files and the options --rtol, --atol,
 ```text
 Do a dry run of convert-to-well on
 data/blastnet_data/lifted_hydrogen_jet/hydrogen-jet-5000 and tell me the grid
-size, the number of snapshots, and which WELL fields it would write.
+size, the number of snapshots, and which WELL fields it would write. Use the
+exact dsagt-run command from the code spec so the execution is recorded.
 ```
 
 **Expect:** 1600 × 2000 grid, 3 snapshots, eleven `t0_fields` scalars and a
@@ -130,7 +133,8 @@ size, the number of snapshots, and which WELL fields it would write.
 
 ```text
 Convert data/blastnet_data/lifted_hydrogen_jet/hydrogen-jet-5000 to
-well_output/lifted_hydrogen_jet_traj_5000.hdf5 with the convert-to-well code.
+well_output/lifted_hydrogen_jet_traj_5000.hdf5 with the convert-to-well code,
+using the exact dsagt-run command from its spec.
 ```
 
 ### 5. Check against the holdout reference and iterate
@@ -139,8 +143,9 @@ well_output/lifted_hydrogen_jet_traj_5000.hdf5 with the convert-to-well code.
 Spot-check well_output/lifted_hydrogen_jet_traj_5000.hdf5 against
 data/holdout/well_output/lifted_hydrogen_jet_traj_5000.hdf5 with 10 random
 points per dataset using the check-well-output code. If anything differs, fix
-the converter in the skill, reconvert, and check again. When the spot-check
-passes, run the full comparison.
+the converter in the skill, reconvert, and check again. Run every conversion
+and check through the registered codes with their dsagt-run commands, so each
+attempt is recorded. When the spot-check passes, run the full comparison.
 ```
 
 **Expect:** a first pass that fails on one or more of the pitfalls the
@@ -152,6 +157,8 @@ original development hit — all of them are visible in the checker's output:
 | species named `Y_H2` instead of `mass_fraction_h2` | datasets only in candidate / only in reference |
 | an extra root attribute (`Re_jet`) or a non-empty `simulation_parameters` | root-attribute mismatch |
 | boundary masks written as `bool` | dtype mismatch on `boundary_conditions/*/mask` |
+| boundary-condition text not parsed (`inflow-outflow`, `pressure outlet`) | `boundary_conditions/` groups missing |
+| coordinates generated as a uniform range instead of read from the grid files | none — the grid is uniform, so it passes within tolerance; read the converter, not only the checker output |
 
 Each fix is a new version of the script inside the skill, each reconversion
 and check a new record in `trace_archive/`. The loop ends with
@@ -161,7 +168,8 @@ and check a new record in `trace_archive/`. The loop ends with
 
 ```text
 Search for a skill that can generate a datacard for the converted WELL file,
-then use it.
+then use it to write a Level 1 datacard to audit/. Take the values from
+info.json and the conversion, and note anything unknown rather than asking.
 ```
 
 ### 7. Reconstruct the pipeline

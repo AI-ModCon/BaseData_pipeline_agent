@@ -2,8 +2,8 @@
 title: Microbial Isolates
 domain: Genomics — short-read QC and assembly with `fastp` + `megahit`
 summary: >-
-  Register short-read QC and assembly codes, ingest genomics best-practice
-  knowledge, and build a reproducible isolate-processing pipeline against real
+  Register short-read QC and assembly codes, follow the genomics best-practice
+  documents, and build a reproducible isolate-processing pipeline against real
   sequencing reads.
 status: published
 order: 10
@@ -25,7 +25,6 @@ This guide documents a reproducible DSAgt demonstration for microbial isolate da
 - An agent platform installed and **already authenticated** (e.g., `claude` for Claude Code, or
   `goose`) — BYOA: dsagt writes no credentials. The default local embedder needs no API key.
 - Conda (for installing fastp and megahit)
-- Git installed
 
 ## Setup
 
@@ -61,14 +60,14 @@ in your shell — never written to disk.)
 ### 3. Collect data and reference material into the project
 
 The agent runs with the project directory as its working directory, so everything it
-reads goes under `$PROJ`.
+reads goes under `$PROJ`. The two documents under [`docs/`](docs/) describe the
+processing pipeline and the fastp and megahit parameter choices; the agent reads
+them directly.
 
 ```bash
-mkdir -p "$PROJ/data/microbial_isolate" "$PROJ/repos" "$PROJ/docs"
+mkdir -p "$PROJ/data/microbial_isolate" "$PROJ/docs"
 scp <nersc-username>@dtn01.nersc.gov:/global/cfs/projectdirs/amsc002/base_data/example_famous_data/* "$PROJ/data/microbial_isolate/"
-git clone https://github.com/OpenGene/fastp.git "$PROJ/repos/fastp"
-git clone https://github.com/voutcn/megahit.git "$PROJ/repos/megahit"
-cp use_cases/microbial_isolates/genomics.md use_cases/microbial_isolates/fastp_megahit_best_practices.md "$PROJ/docs/"
+cp use_cases/microbial_isolates/docs/*.md "$PROJ/docs/"
 ```
 
 ### 4. Start the session
@@ -81,20 +80,9 @@ The agent launches from the project directory with the MCP server connected. Ser
 
 ## Execution
 
-Use these prompts in the agent session. Replace `<CONDA_PREFIX>` with your conda env bin path (e.g., `~/miniconda3/envs/isolate/bin`). Data, repos, and docs paths are relative to the project directory.
+Use these prompts in the agent session. Replace `<CONDA_PREFIX>` with your conda env bin path (e.g., `~/miniconda3/envs/isolate/bin`). Data and docs paths are relative to the project directory.
 
-### 1. Build knowledge base
-
-```text
-I'd like to create a new collection in the knowledge base: microbial_isolates.
-The collection will contain:
-1) the code package files for fastp: repos/fastp/
-2) the code package files for megahit: repos/megahit/
-3) a short document describing a processing pipeline: docs/genomics.md
-4) best practices for fastp and megahit: docs/fastp_megahit_best_practices.md
-```
-
-### 2. Register codes
+### 1. Register codes
 
 ```text
 Let's add <CONDA_PREFIX>/fastp to the registry
@@ -107,24 +95,25 @@ Let's add <CONDA_PREFIX>/megahit to the registry
 Search the registry for assembly codes.
 ```
 
-### 3. Process one sample
+### 2. Process one sample
 
 ```text
 I have an isolate file at data/microbial_isolate/53162.2.609630.AAAGGCTAGA-GATTCAGTTA.filter-ISO.fastq.gz
 Information about the dataset is in the README in that directory. I need to preprocess this file and assemble it.
+Follow docs/genomics.md for the processing pipeline and docs/fastp_megahit_best_practices.md for parameter choices.
 fastp and megahit both have data assessment capability so we don't need to create additional codes.
 megahit should be run with kmax=21 and memory=0.3 to avoid OOM on this laptop.
 Tell me your plan before proceeding.
 ```
 
-### 4. Process remaining samples
+### 3. Process remaining samples
 
 ```text
 Let's run this same pipeline on the rest of the fastq files at data/microbial_isolate/
 We can process them one at a time.
 ```
 
-### 5. Generate datacard
+### 4. Generate datacard
 
 ```text
 Search for a skill that can generate a datacard for our processed data, then use it.
@@ -132,7 +121,7 @@ Search for a skill that can generate a datacard for our processed data, then use
 
 The agent should find the `datacard-generator` skill in the `genesis` catalog via `search_skills` and install it with `install_skill` (only `skill-creator` is built in; domain skills come from catalogs).
 
-### 6. Reconstruct pipeline
+### 5. Reconstruct pipeline
 
 ```text
 Reconstruct the pipeline from the execution records as a bash script.
@@ -142,17 +131,16 @@ The agent calls `reconstruct_pipeline` to generate a reproducible script from th
 
 ## Post-Conditions
 
-1. Knowledge base contains collection `microbial_isolates` with all listed references indexed.
-2. Code registry includes `fastp` and `megahit` code specs (wrapped with `dsagt-run`).
-3. Processed output directories exist for each isolate sample.
-4. For each completed sample:
+1. Code registry includes `fastp` and `megahit` code specs (wrapped with `dsagt-run`).
+2. Processed output directories exist for each isolate sample.
+3. For each completed sample:
    - Preprocessed FASTQ output exists
    - `fastp` HTML and JSON reports exist
    - Assembly output exists, including `final.contigs.fa`
-5. A Level 1 datacard exists for the processed dataset.
-6. A reconstructed pipeline script (bash or Snakemake) is available.
-7. Code execution records in `trace_archive/` document the full provenance chain.
-8. MLflow traces (in the serverless `mlflow.db` store) capture token usage, latency, and full request/response history. View with `mlflow ui --backend-store-uri sqlite:///$PROJ/mlflow.db`.
+4. A Level 1 datacard exists for the processed dataset.
+5. A reconstructed pipeline script (bash or Snakemake) is available.
+6. Code execution records in `trace_archive/` document the full provenance chain.
+7. MLflow traces (in the serverless `mlflow.db` store) capture token usage, latency, and full request/response history. View with `mlflow ui --backend-store-uri sqlite:///$PROJ/mlflow.db`.
 
 `megahit` may intermittently fail with segmentation faults on some files/hardware settings. If this occurs, rerun that sample with conservative settings while preserving the required `kmax=21` and laptop-safe memory cap.
 
@@ -160,13 +148,12 @@ The agent calls `reconstruct_pipeline` to generate a reproducible script from th
 
 | DSAgt Capability | Steps |
 |------------------|-------|
-| Knowledge ingestion (source repos + documents into one collection) | 1 |
-| Registering external binaries as codes | 2 |
-| Registry search | 2 |
-| KB-guided pipeline planning | 3 |
-| Code execution with provenance across many samples | 3, 4 |
-| Skill discovery and installation from a catalog | 5 |
-| Pipeline reconstruction | 6 |
+| Registering external binaries as codes | 1 |
+| Registry search | 1 |
+| Pipeline planning from best-practice documents, confirmed with the user | 2 |
+| Code execution with provenance across many samples | 2, 3 |
+| Skill discovery and installation from a catalog | 4 |
+| Pipeline reconstruction | 5 |
 
 ## Cleanup
 
