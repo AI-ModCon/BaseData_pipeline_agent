@@ -24,21 +24,25 @@ This guide documents a reproducible DSAgt demonstration for microbial isolate da
 - DSAgt installed (`uv sync --all-groups`)
 - An agent platform installed and **already authenticated** (e.g., `claude` for Claude Code, or
   `goose`) — BYOA: dsagt writes no credentials. The default local embedder needs no API key.
-- Conda (for installing fastp and megahit)
+- fastp and megahit, installed by [`scripts/setup_env.sh`](scripts/setup_env.sh)
+  (see Setup); conda is optional, the script fetches micromamba when neither is present
 
 ## Setup
 
 ### 1. Install fastp and megahit
 
-fastp and megahit are C/C++ programs installed via Bioconda, not pip:
+fastp and megahit are C/C++ programs from Bioconda, not pip packages. The setup
+script creates a conda environment for them from
+[`scripts/environment.yml`](scripts/environment.yml) under the shared DSAgt
+tools directory, using conda if present and a downloaded micromamba otherwise:
 
 ```bash
-conda create -n isolate -c conda-forge -c bioconda fastp megahit -y
-conda run -n isolate fastp --version
-conda run -n isolate megahit --version
+bash use_cases/microbial_isolates/scripts/setup_env.sh
 ```
 
-Note the conda env prefix (e.g., `~/miniconda3/envs/isolate/bin/`) — you'll reference these paths when registering the codes.
+It prints the environment's `bin` directory
+(`~/dsagt-projects/.tools/microbial_isolates/env/bin`); that path is the
+`<CONDA_PREFIX>` in the prompts below.
 
 ### 2. Initialize a DSAgt project
 
@@ -80,7 +84,7 @@ The agent launches from the project directory with the MCP server connected. Ser
 
 ## Execution
 
-Use these prompts in the agent session. Replace `<CONDA_PREFIX>` with your conda env bin path (e.g., `~/miniconda3/envs/isolate/bin`). Data and docs paths are relative to the project directory.
+Use these prompts in the agent session. Replace `<CONDA_PREFIX>` with the bin directory the setup script printed (`~/dsagt-projects/.tools/microbial_isolates/env/bin`). Data and docs paths are relative to the project directory.
 
 ### 1. Register codes
 
@@ -161,5 +165,5 @@ The agent calls `reconstruct_pipeline` to generate a reproducible script from th
 
 ```bash
 dsagt rm isolate-pipeline -y
-conda env remove -n isolate -y
+rm -rf ~/dsagt-projects/.tools/microbial_isolates     # the fastp/megahit environment
 ```
