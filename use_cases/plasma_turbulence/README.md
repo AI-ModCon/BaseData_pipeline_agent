@@ -14,7 +14,7 @@ order: 80
 
 > **Estimated time:** ~30 minutes on an HPC login node — not a 10-minute demo.
 > XGC output is HPC-scale ADIOS2 BP5 data (up to ~1.3M mesh nodes), and the
-> scripts require `adios2` and `torch`, plus the `graph_datasets` module (`BaseCFDGraphDataset`) for
+> scripts require `adios2` and `torch`, plus MATEY's `BaseCFDGraphDataset` for
 > the final dataset step. No case is hosted with this demo: point the paths
 > below at your own XGC run.
 
@@ -44,7 +44,7 @@ for the variable reference. Representative cases:
 - DSAgt installed (`uv sync --all-groups`) and an agent platform installed and
   **already authenticated** (BYOA — dsagt writes no credentials).
 - `adios2` and `torch` importable in the environment `dsagt` runs in, and
-  the `graph_datasets` module that provides `BaseCFDGraphDataset` for step 6.
+  MATEY's `BaseCFDGraphDataset` (the `graph_datasets` module) for step 6.
 - An XGC case directory of your own (the KSTART case in the table above is the
   smallest of the three and the one the expected values below refer to).
 
