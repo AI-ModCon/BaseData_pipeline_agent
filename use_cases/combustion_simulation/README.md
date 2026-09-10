@@ -2,36 +2,41 @@
 title: BlastNet → WELL Conversion
 domain: Combustion CFD — BlastNet DNS trajectories to the WELL HDF5 format
 summary: >-
-  Convert BlastNet direct-numerical-simulation trajectories into the WELL HDF5
-  format with a converter developed iteratively under DSAgt — ingest the format
-  specification into the knowledge base, register the converter and its checker
-  as codes, convert a sample trajectory with provenance, validate it against a
-  holdout reference, and reconstruct the pipeline.
+  Develop a BlastNet-to-WELL converter from the format documents: ingest the
+  specifications into the knowledge base, author a conversion skill, register
+  the agent-written converter and a checker as codes, convert a sample
+  trajectory with provenance, and iterate against a holdout reference until
+  the check passes.
 status: published
 order: 90
 ---
 
 # DSAgt Demo: BlastNet → WELL Conversion
 
-> **Estimated time:** ~20 minutes with the sample trajectory from the data
-> bundle. Full BlastNet channel-flow cases are hundreds of GB and need an HPC
-> node; this demo uses one small lifted-hydrogen-jet trajectory.
+> **Estimated time:** ~45–60 minutes with the sample trajectory from the data
+> bundle. The agent writes the converter and iterates against a checker, so
+> the number of passes varies. Full BlastNet channel-flow cases are hundreds
+> of GB and need an HPC node; this demo uses one small lifted-hydrogen-jet
+> trajectory cut to three snapshots.
 
 [BlastNet](https://blastnet.github.io/) publishes combustion DNS datasets as
 per-trajectory directories of raw float32 arrays plus an `info.json`.
 Machine-learning pipelines consume them in the [WELL](https://polymathic-ai.org/the_well/)
-HDF5 layout. This use case is the converter that bridges the two, and the DSAgt
-session that exercises it.
+HDF5 layout. This walkthrough has the agent build the bridge between the two
+from the two documents that define them, then prove it against a reference
+file produced upstream. It reproduces the workflow that produced the converter
+in [`reference/`](reference/); that development history, with the bugs each
+version had, is in
+[`reference/development_history.md`](reference/development_history.md).
 
-The converter [`convert_to_well_format_v4.py`](blastnet_minimal_input/convert_to_well_format_v4.py)
-and its checker [`check_well_output.py`](blastnet_minimal_input/check_well_output.py)
-were developed over four iterations in a DSAgt session, each version validated
-against holdout reference files. The development record — all four versions and
-their comparison reports — is preserved under
-[`blastnet_minimal_input/`](blastnet_minimal_input/) (see its
-[README](blastnet_minimal_input/README.md) and
-[development summary](blastnet_minimal_input/development_summary_report.md)).
-The walkthrough below drives the final converter.
+Folder contents:
+
+| Path | Role in the demo |
+|------|------------------|
+| [`docs/well_format.md`](docs/well_format.md), [`docs/blastnet_layout.md`](docs/blastnet_layout.md) | the two specifications the agent works from |
+| [`scripts/check_well_output.py`](scripts/check_well_output.py) | the checker: compares a candidate WELL file to a reference (structure, shapes, values) |
+| [`scripts/make_demo_subset.py`](scripts/make_demo_subset.py) | builds the demo data bundle from a full trajectory |
+| [`reference/`](reference/) | the converter this workflow produced, its earlier versions, and the validation reports — a reference solution, not an input to the demo |
 
 ## Prerequisites
 
@@ -51,8 +56,8 @@ are fine for the rest. Then:
 
 ```bash
 PROJ=~/dsagt-projects/blastnet-well
-# Demo data (one BlastNet trajectory and its holdout WELL reference file) from
-# the DSAgt use-case data folder:
+# Demo data (one BlastNet trajectory, three snapshots, and its holdout WELL
+# reference file) from the DSAgt use-case data folder:
 # https://drive.google.com/drive/folders/1RWQAJeHaikIaD7CCf8ciJ71m55S1erp6
 curl -L "https://drive.usercontent.google.com/download?id=1xUZhlr6uCahSbOLiLt5wcwMzehdpaUjL&export=download&confirm=t" \
   -o combustion_simulation_data.tar.gz
@@ -60,12 +65,12 @@ tar xzf combustion_simulation_data.tar.gz -C "$PROJ"
 # creates $PROJ/data/blastnet_data/lifted_hydrogen_jet/hydrogen-jet-5000/
 #     and $PROJ/data/holdout/well_output/lifted_hydrogen_jet_traj_5000.hdf5
 mkdir -p "$PROJ/codes/scripts" "$PROJ/docs"
-cp use_cases/combustion_simulation/blastnet_minimal_input/convert_to_well_format_v4.py \
-   use_cases/combustion_simulation/blastnet_minimal_input/check_well_output.py "$PROJ/codes/scripts/"
-cp use_cases/combustion_simulation/blastnet_minimal_input/well_format.md \
-   use_cases/combustion_simulation/blastnet_minimal_input/README-blastnet.md "$PROJ/docs/"
+cp use_cases/combustion_simulation/docs/*.md "$PROJ/docs/"
+cp use_cases/combustion_simulation/scripts/check_well_output.py "$PROJ/codes/scripts/"
 dsagt start blastnet-well
 ```
+
+The converter is deliberately not copied in. The agent writes it.
 
 ## Execution
 
@@ -80,71 +85,101 @@ holds the WELL HDF5 format specification and the BlastNet dataset layout.
 
 **Verify:** `List all knowledge base collections.` → `well_format`.
 
-### 2. Query the specification
+### 2. Query the mapping rules
 
 ```text
-Search the well_format collection: which BlastNet fields go into t0_fields
-versus t1_fields in a WELL file, and how are boundary conditions represented?
+From the well_format collection: how does a BlastNet trajectory map onto a
+WELL file? Cover the field-name mapping, which fields go into t0_fields versus
+t1_fields, how the grid and time arrays are derived, how boundary conditions
+are represented, and which root attributes are required.
 ```
 
 **Expect:** scalar fields (pressure, density, temperature, species mass
-fractions) in `t0_fields/`, velocity stacked as a vector in `t1_fields/`, and
-per-type mask groups under `boundary_conditions/`.
+fractions as `mass_fraction_*`) in `t0_fields/`, velocity stacked as a vector
+in `t1_fields/`, per-type mask groups under `boundary_conditions/`, coordinate
+arrays from the grid files, time from `info.json`, and the root attributes
+`dataset_name`, `grid_type`, `n_spatial_dims`, `n_trajectories`,
+`simulation_parameters`.
 
-### 3. Register the converter and checker as codes
+### 3. Author the conversion skill
+
+```text
+Use the skill-creator skill to author a project skill named "blastnet-to-well".
+Its SKILL.md should state the mapping rules you just retrieved, citing the
+well_format collection. Under its scripts/ directory write
+convert_to_well_format.py: a command-line converter taking a positional
+BlastNet trajectory directory and the options --output-file and --dry-run,
+reading info.json for dimensions, variables, snapshot ids, and grid paths, and
+writing one WELL HDF5 file. Save it with save_skill.
+```
+
+**Expect:** `save_skill` writes `<project>/skills/blastnet-to-well/` with a
+`SKILL.md` and `scripts/convert_to_well_format.py`, mirrored into the agent's
+native skills directory.
+
+### 4. Register the converter and the checker as codes
 
 ```text
 Register two codes. convert-to-well runs
-`python codes/scripts/convert_to_well_format_v4.py` with a positional
-trajectory directory and the options --output-path, --output-file, and
---dry-run. check-well-output runs `python codes/scripts/check_well_output.py`
-with positional candidate and reference files and the options --rtol, --atol,
+`python skills/blastnet-to-well/scripts/convert_to_well_format.py` with a
+positional trajectory directory and the options --output-file and --dry-run.
+check-well-output runs `python codes/scripts/check_well_output.py` with
+positional candidate and reference files and the options --rtol, --atol,
 --spot-check, --n-points, and --seed. Run --help on each first to confirm.
 ```
 
 **Verify:** `Search the registry for WELL conversion codes.` → both specs under `codes/`.
 
-### 4. Dry run
+### 5. Dry run
 
 ```text
-Do a dry run of the converter on
+Do a dry run of convert-to-well on
 data/blastnet_data/lifted_hydrogen_jet/hydrogen-jet-5000 and tell me the grid
 size, the number of snapshots, and which WELL fields it would write.
 ```
 
-**Expect:** `dsagt-run` wraps the converter with `--dry-run`; no HDF5 is written.
+**Expect:** 1600 × 2000 grid, 3 snapshots, eleven `t0_fields` scalars and a
+2-component velocity; no HDF5 written.
 
-### 5. Convert the trajectory
+### 6. Convert the trajectory
 
 ```text
 Convert data/blastnet_data/lifted_hydrogen_jet/hydrogen-jet-5000 to
-well_output/lifted_hydrogen_jet_traj_5000.hdf5 using the registered code.
+well_output/lifted_hydrogen_jet_traj_5000.hdf5 with the convert-to-well code.
 ```
 
-**Expect:** one HDF5 file with `dimensions/`, `boundary_conditions/`,
-`t0_fields/`, `t1_fields/velocity`, and the root attributes the specification
-requires.
-
-### 6. Validate against the holdout reference
+### 7. Check against the holdout reference and iterate
 
 ```text
 Spot-check well_output/lifted_hydrogen_jet_traj_5000.hdf5 against
 data/holdout/well_output/lifted_hydrogen_jet_traj_5000.hdf5 with 10 random
-points per dataset, then run the full comparison. Summarize any structural or
-numerical differences.
+points per dataset using the check-well-output code. If anything differs, fix
+the converter in the skill, reconvert, and check again. When the spot-check
+passes, run the full comparison.
 ```
 
-**Expect:** both checker runs pass — matching structure, field shapes, and
-values within tolerance.
+**Expect:** a first pass that fails on one or more of the pitfalls the
+original development hit — all of them are visible in the checker's output:
 
-### 7. Generate a datacard
+| Pitfall | Checker symptom |
+|---------|-----------------|
+| data files reshaped with a transpose | every field value differs, errors of order 10²–10³ |
+| species named `Y_H2` instead of `mass_fraction_h2` | datasets only in candidate / only in reference |
+| an extra root attribute (`Re_jet`) or a non-empty `simulation_parameters` | root-attribute mismatch |
+| boundary masks written as `bool` | dtype mismatch on `boundary_conditions/*/mask` |
+
+Each fix is a new version of the script inside the skill, each reconversion
+and check a new record in `trace_archive/`. The loop ends with
+`PASS — candidate matches reference exactly`.
+
+### 8. Generate a datacard
 
 ```text
 Search for a skill that can generate a datacard for the converted WELL file,
 then use it.
 ```
 
-### 8. Reconstruct the pipeline
+### 9. Reconstruct the pipeline
 
 ```text
 Reconstruct the conversion and validation pipeline from the execution records
@@ -152,17 +187,19 @@ as a bash script, with the trajectory directory as a variable at the top so it
 can be rerun on the other BlastNet trajectories.
 ```
 
+The reconstruction should keep only the final converter run and its checks;
+ask the agent to drop the superseded attempts if it includes them.
+
 ## Post-Conditions
 
 1. Knowledge base contains the `well_format` collection with both specification documents.
-2. Code registry contains `convert-to-well` and `check-well-output` specs.
-3. `well_output/lifted_hydrogen_jet_traj_5000.hdf5` exists and the checker
-   reports it matches the holdout reference.
-4. A datacard exists for the converted dataset.
-5. `trace_archive/` holds one execution record per converter and checker run.
-6. A reconstructed pipeline script replays conversion and validation for a
-   parameterized trajectory directory.
-7. MLflow traces (in the serverless `mlflow.db` store) capture the session —
+2. `skills/blastnet-to-well/` exists with a `SKILL.md` stating the mapping rules and a converter under `scripts/`.
+3. Code registry contains `convert-to-well` and `check-well-output` specs.
+4. `well_output/lifted_hydrogen_jet_traj_5000.hdf5` exists and the full checker run reports an exact match to the holdout reference.
+5. `trace_archive/` holds every converter and checker run, including the failed checks that drove the fixes.
+6. A datacard exists for the converted dataset.
+7. A reconstructed pipeline script replays conversion and validation for a parameterized trajectory directory.
+8. MLflow traces (in the serverless `mlflow.db` store) capture the session —
    `mlflow ui --backend-store-uri sqlite:///$PROJ/mlflow.db`.
 
 ## What This Tests
@@ -170,12 +207,14 @@ can be rerun on the other BlastNet trajectories.
 | DSAgt Capability | Steps |
 |------------------|-------|
 | Knowledge ingestion of format specifications | 1 |
-| Semantic search for schema questions | 2 |
-| Code registration (`save_code_spec`) and registry search | 3 |
-| Code execution with provenance through `dsagt-run` | 4–6 |
-| Paired operation and check codes | 5, 6 |
-| Skill discovery and use (datacard generation) | 7 |
-| Pipeline reconstruction with a parameterized input | 8 |
+| Semantic search for schema rules | 2 |
+| Skill authoring with `skill-creator` and `save_skill`, grounded in the KB | 3 |
+| Agent-written code from documentation | 3 |
+| Code registration (`save_code_spec`) and registry search | 4 |
+| Code execution with provenance through `dsagt-run` | 5–7 |
+| Check-driven iteration with failed runs on the record | 7 |
+| Skill discovery and use (datacard generation) | 8 |
+| Pipeline reconstruction with a parameterized input | 9 |
 
 ## Cleanup
 
@@ -186,16 +225,19 @@ rm combustion_simulation_data.tar.gz
 
 ## Notes
 
-- The demo bundle is the first snapshots of the `hydrogen-jet-5000` trajectory
-  (a full trajectory is ~32 GB) with the reference WELL file sliced
-  to the same steps. It is built from the full data with
-  [`make_demo_subset.py`](blastnet_minimal_input/make_demo_subset.py):
+- [`reference/convert_to_well_format.py`](reference/convert_to_well_format.py)
+  is the converter this workflow produced, verified against the holdout file.
+  Compare the agent's converter to it after step 7, not before.
+- The demo bundle is the first three snapshots of the `hydrogen-jet-5000`
+  trajectory (a full trajectory is ~32 GB) with the reference WELL file sliced
+  to the same steps, built with
+  [`scripts/make_demo_subset.py`](scripts/make_demo_subset.py):
 
   ```bash
-  python3 make_demo_subset.py <traj_dir> <reference.hdf5> <out_dir> --steps 5
+  python3 make_demo_subset.py <traj_dir> <reference.hdf5> <out_dir> --steps 3
   tar czf combustion_simulation_data.tar.gz -C <out_dir> data
   ```
 
-  The subset converts and checks exactly like the full trajectory, since the
+  The subset converts and checks exactly like the full trajectory, since a
   converter enumerates snapshots from `info.json` and every time-varying WELL
   dataset carries time on axis 1.
