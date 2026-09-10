@@ -39,6 +39,7 @@ docs = [
     "mkdocs-include-markdown-plugin>=6.0",
 ]
 use-cases = [
+    "adios2>=2.10",
     "h5py>=3.10",
     "pymatgen>=2024.1",
 ]
