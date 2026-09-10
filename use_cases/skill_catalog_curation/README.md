@@ -1,23 +1,23 @@
 ---
-title: Genesis Skills for Data Curation
-domain: Skill management — external skill catalog (Genesis / OSTI GitLab) driving a data-curation pipeline
+title: Catalog Skills for Data Curation
+domain: Skill management — an external skill catalog driving a data-curation pipeline
 summary: >-
-  Sync the Genesis skill catalog, install data-curation skills (datacard
+  Sync an external skill catalog, install data-curation skills (datacard
   generation, Croissant validation), ground them in KB-ingested domain docs,
   and produce a datacard for a small curated dataset.
 status: published
 order: 60
 ---
 
-# DSAgt Demo: Genesis Skills for a Data-Curation Pipeline
+# DSAgt Demo: Catalog Skills for a Data-Curation Pipeline
 
 > **Estimated time:** ~10 minutes (the data is tiny; the one external
-> dependency is a shallow clone of the Genesis catalog from OSTI GitLab — needs
+> dependency is a shallow clone of the skill catalog from OSTI GitLab — needs
 > network access to `gitlab.osti.gov`).
 
 An end-to-end **data-preparation** walkthrough that exercises the skill catalog
-against the **Genesis** source (OSTI GitLab). The agent pulls in the
-BASE-Data/ModCon curation skills, grounds itself in domain context loaded into
+against the `genesis` source (hosted on OSTI GitLab). The agent pulls in the
+catalog's data-curation skills, grounds itself in domain context loaded into
 the **knowledge base**, then prepares and **datacards a finished dataset**.
 
 The "finished product" is a small curated dataset — a CO2-methanation **catalyst
@@ -29,7 +29,7 @@ seconds with no real instruments or HPC.
 
 - DSAgt installed (`uv sync --all-groups`) and an agent platform installed and
   **already authenticated** (BYOA — dsagt writes no credentials).
-- Git, with network access to `gitlab.osti.gov` (the Genesis catalog clones
+- Git, with network access to `gitlab.osti.gov` (the `genesis` catalog clones
   from OSTI GitLab, not GitHub).
 - Embedding credentials are optional — `search_skills` / `kb_search` use
   semantic search when `EMBEDDING_*` is set and fall back to a keyword scorer
@@ -50,8 +50,8 @@ PROJ=~/dsagt-projects/genesis-skills
 # Demo data (catalyst_screening.csv, the domain docs, and the expected datacard)
 # from the DSAgt use-case data folder:
 # https://drive.google.com/drive/folders/1RWQAJeHaikIaD7CCf8ciJ71m55S1erp6
-curl -L "https://drive.usercontent.google.com/download?id=1nji0Avc-n952isq5aKGLoZgTkYHe0jzR&export=download&confirm=t" -o genesis_skills.tar.gz
-tar xzf genesis_skills.tar.gz -C "$PROJ" --strip-components=1 genesis_skills/mock_data
+curl -L "https://drive.usercontent.google.com/download?id=1nji0Avc-n952isq5aKGLoZgTkYHe0jzR&export=download&confirm=t" -o catalog_demo_data.tar.gz
+tar xzf catalog_demo_data.tar.gz -C "$PROJ" --strip-components=1 genesis_skills/mock_data
 # $PROJ/mock_data now holds dataset/, domain/, expected_datacard.md
 dsagt start genesis-skills
 ```
@@ -61,10 +61,10 @@ dsagt start genesis-skills
 Paste each prompt into the agent (running inside the project), one at a time.
 Confirmation checks are consolidated in **Post-Conditions** below.
 
-### 1. Enable the Genesis source
+### 1. Enable the catalog source
 
 ```text
-Enable the "genesis" skill source so we have the GENESIS / ModCon data-curation skills available. Then tell me how many skills it indexed.
+Enable the "genesis" skill source so we have its data-curation skills available. Then tell me how many skills it indexed.
 ```
 
 **Expect:** `add_skill_source(source="genesis")` → a shallow clone of OSTI GitLab,
@@ -79,7 +79,7 @@ Search the catalog for two skills — one that creates a datacard / dataset docu
 **Expect:** `search_skills` surfaces **`generating-datacards`** and
 **`croissant-validator`** → `install_skill` for each. Both are installed into
 `<project>/skills/` and mirrored into the agent's native skills directory at
-install time, each with a `PROVENANCE.txt` crediting the Genesis source.
+install time, each with a `PROVENANCE.txt` crediting the source.
 
 ### 3. Ingest the domain docs into the KB
 
@@ -137,7 +137,7 @@ ls "$PROJ/audit/"                          # catalyst_screening_datacard.md
    collection (retrievable via `kb_search`).
 2. `generating-datacards` and `croissant-validator` are installed into
    `<project>/skills/` and mirrored into the agent's native skills directory,
-   each with a `PROVENANCE.txt` crediting the Genesis source. The next session
+   each with a `PROVENANCE.txt` crediting the source. The next session
    auto-invokes them natively; this session used them by reading their
    `SKILL.md`.
 3. `audit/catalyst_screening_datacard.md` was produced for the finished dataset,
@@ -161,7 +161,7 @@ ls "$PROJ/audit/"                          # catalyst_screening_datacard.md
 
 ```bash
 dsagt rm genesis-skills -y
-rm genesis_skills.tar.gz
+rm catalog_demo_data.tar.gz
 ```
 
 The shared catalog cache is stored at `~/dsagt-projects/.skill_sources/` and is

@@ -1,8 +1,8 @@
 ---
-title: VASP → ISAAC
-domain: Materials science — VASP DFT output to ISAAC AI-ready records, via catalog skills and a registered code
+title: VASP DFT → AI-Ready Records
+domain: Materials science — VASP DFT output to AI-ready records, via catalog skills and a registered code
 summary: >-
-  Convert VASP DFT output into ISAAC AI-ready records two ways — the agent
+  Convert VASP DFT output into AI-ready records two ways — the agent
   discovers, installs, and authors pymatgen-based skills to convert a small
   slab calculation, then registers a NEB converter as a code and runs it with
   provenance against a five-image NEB fixture (no DFT run, no HPC).
@@ -10,14 +10,14 @@ status: published
 order: 30
 ---
 
-# DSAgt Demo: VASP → ISAAC AI-Ready Records
+# DSAgt Demo: VASP DFT → AI-Ready Records
 
 > **Estimated time:** ~25 minutes — the fixture data is a few MB, so the only
 > real costs are a one-time `pip install pymatgen` and a shallow clone of the
 > K-Dense catalog from GitHub. No DFT run, no HPC.
 
-**Goal:** turn VASP calculations into
-[ISAAC AI-Ready Records](https://github.com/ISAAC-DOE/isaac-ai-ready-record)
+**Goal:** turn VASP calculations into AI-ready records in the
+[ISAAC record schema](https://github.com/ISAAC-DOE/isaac-ai-ready-record)
 through both of DSAgt's extension mechanisms:
 
 1. **Skills.** The agent discovers the external skill sources, syncs the K-Dense
@@ -62,13 +62,13 @@ mkdir -p "$PROJ/data"
 # Demo data from the DSAgt use-case data folder
 # (https://drive.google.com/drive/folders/1RWQAJeHaikIaD7CCf8ciJ71m55S1erp6):
 # the NEB fixture, then the mock slab and its expected record.
-curl -L "https://drive.usercontent.google.com/download?id=1uH0r7ryF9nUJaE1fxXZMAzBjiE4TXxWu&export=download&confirm=t" -o isaac_vasp.tar.gz
-tar xzf isaac_vasp.tar.gz -C "$PROJ/data" --strip-components=1 isaac_vasp/neb
-curl -L "https://drive.usercontent.google.com/download?id=19PNObF-FZkGITNJ_VIZH8j9BHWSqRPrH&export=download&confirm=t" -o isaac_slab.tar.gz
-tar xzf isaac_slab.tar.gz -C "$PROJ/data" --strip-components=2 isaac_skills_demo/mock_data
+curl -L "https://drive.usercontent.google.com/download?id=1uH0r7ryF9nUJaE1fxXZMAzBjiE4TXxWu&export=download&confirm=t" -o neb_fixture.tar.gz
+tar xzf neb_fixture.tar.gz -C "$PROJ/data" --strip-components=1 isaac_vasp/neb
+curl -L "https://drive.usercontent.google.com/download?id=19PNObF-FZkGITNJ_VIZH8j9BHWSqRPrH&export=download&confirm=t" -o slab_fixture.tar.gz
+tar xzf slab_fixture.tar.gz -C "$PROJ/data" --strip-components=2 isaac_skills_demo/mock_data
 # $PROJ/data now holds neb/, mock_slab/, expected_isaac_record.json
 mkdir -p "$PROJ/codes/scripts"
-cp use_cases/isaac_vasp/vasp_neb_to_isaac.py "$PROJ/codes/scripts/"
+cp use_cases/vasp_dft/vasp_neb_to_isaac.py "$PROJ/codes/scripts/"
 dsagt start isaac-vasp                        # mirrors the built-in skill-creator into the agent's native skills dir
 ```
 
@@ -226,7 +226,7 @@ ls "$PROJ/audit/" "$PROJ/trace_archive/"
 
 ```bash
 dsagt rm isaac-vasp -y
-rm isaac_vasp.tar.gz isaac_slab.tar.gz
+rm neb_fixture.tar.gz slab_fixture.tar.gz
 ```
 
 The shared catalog cache is stored at `~/dsagt-projects/.skill_sources/` and is
@@ -249,6 +249,6 @@ reused across projects; delete it to force a fresh clone.
   broader slab/bulk converter that needs `vasprun.xml`-bearing slab or bulk data.
   It is a reference for what the agent-authored skill in step 5 can grow into,
   not something this demo's data exercises.
-- Sister demo: [`genesis_skills`](../genesis_skills/) exercises the same catalog →
+- Sister demo: [`skill_catalog_curation`](../skill_catalog_curation/) exercises the same catalog →
   install → native loop plus KB domain ingest and datacard generation, against
-  the Genesis (OSTI GitLab) source.
+  the `genesis` (OSTI GitLab) source.
