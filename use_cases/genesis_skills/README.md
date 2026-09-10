@@ -23,7 +23,8 @@ documents, then prepares and **datacards a finished dataset**.
 The "finished product" is a small curated dataset — a CO2-methanation **catalyst
 screen** (`dataset/catalyst_screening.csv`, 8 rows) — plus the domain docs that
 describe how it was produced. Everything is tiny, so the whole thing runs in
-seconds with no real instruments or HPC.
+seconds with no real instruments or HPC. The walkthrough has been run end to
+end with Claude Code on Sonnet 4.5.
 
 ## Prerequisites
 

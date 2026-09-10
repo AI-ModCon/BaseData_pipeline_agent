@@ -24,7 +24,8 @@ metrics too.
 
 The dataset is the **UCI Adult** census extract included with AIDRIN
 (`examples/sample_data/csv/adult.csv`). It has everything these metrics need: a record **ID**, quasi-identifiers (`age`, `sex`, `race`), sensitive attributes (`sex`,
-`race`), and a prediction **target** (`income`).
+`race`), and a prediction **target** (`income`). The walkthrough has been run end to end with
+Claude Code on Sonnet 4.5.
 
 ## Applied Metrics
 
@@ -163,8 +164,9 @@ columns: [sex, race]
 ### 4. Generate a datacard from the assessment
 
 ```text
-Search for a skill that can generate a datacard for data/adult.csv, then use it to produce the
-datacard — incorporating the readiness findings above.
+Search for a skill that can generate a datacard for data/adult.csv, then use it to write a Level 1
+datacard that incorporates the readiness findings above. Take the values from the dataset and the
+reports, and note anything unknown rather than asking.
 ```
 
 The agent discovers the `datacard-generator` skill and writes a Genesis Datacard (e.g.
