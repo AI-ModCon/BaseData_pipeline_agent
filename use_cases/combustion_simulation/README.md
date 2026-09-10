@@ -177,12 +177,19 @@ info.json and the conversion, and note anything unknown rather than asking.
 
 ```text
 Reconstruct the conversion and validation pipeline from the execution records
-as a bash script, with the trajectory directory as a variable at the top so it
-can be rerun on the other BlastNet trajectories.
+as a bash script and save it as pipeline.sh. Keep the commands as
+reconstruct_pipeline returns them — they call the converter and checker
+directly, without dsagt-run, so the script runs outside a DSAgt project. Lift
+the trajectory directory into a variable at the top so it can be rerun on the
+other BlastNet trajectories, and keep only the final converter run and its
+checks.
 ```
 
-The reconstruction should keep only the final converter run and its checks;
-ask the agent to drop the superseded attempts if it includes them.
+**Expect:** `reconstruct_pipeline(format="bash")` orders the recorded runs by
+their input/output files; `pipeline.sh` holds the dry run, the conversion, and
+the two checks as plain `python` (or `uv run`) commands with `TRAJ_DIR` at the
+top. The wrapper belongs to the session that produced the records, not to the
+script; a rerun inside a DSAgt project can add it back.
 
 ## Post-Conditions
 
@@ -191,7 +198,7 @@ ask the agent to drop the superseded attempts if it includes them.
 3. `well_output/lifted_hydrogen_jet_traj_5000.hdf5` exists and the full checker run reports an exact match to the holdout reference.
 4. `trace_archive/` holds every converter and checker run, including the failed checks that drove the fixes.
 5. A datacard exists for the converted dataset.
-6. A reconstructed pipeline script replays conversion and validation for a parameterized trajectory directory.
+6. `pipeline.sh` replays conversion and validation for a parameterized trajectory directory, calling the tools directly.
 7. MLflow traces (in the serverless `mlflow.db` store) capture the session —
    `mlflow ui --backend-store-uri sqlite:///$PROJ/mlflow.db`.
 
