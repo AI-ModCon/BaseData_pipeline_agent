@@ -13,11 +13,12 @@ order: 20
 
 # DSAgt Demo: Cryo-EM Data Curation Pipeline
 
-> **Estimated time:** ~45 minutes — this is the broadest demo (7 stages).
-> It pulls a **~2 GB data download**, two open-access papers, and a full CryoPPP
-> repo clone, then KB-ingests the whole repo (minutes on the local embedder)
-> before any pipeline work. The one-time AIDRIN install at `dsagt init` adds a
-> few minutes on first use.
+> **Estimated time:** ~45 minutes of session time, plus the download — this is
+> the broadest demo (7 stages). It pulls a **~22 GB data download** (84
+> micrographs and their particle stacks), two open-access papers, and a full
+> CryoPPP repo clone, then KB-ingests the whole repo (minutes on the local
+> embedder) before any pipeline work. The one-time AIDRIN install at
+> `dsagt init` adds a few minutes on first use.
 
 This guide documents a comprehensive DSAgt demonstration using cryo-electron microscopy (cryo-EM) data. It exercises knowledge ingestion, KB-guided pipeline design, code registration from third-party scripts, multi-stage pipeline execution with domain-specific evaluation, and the [readiness gate](../../docs/readiness.md): with the gate enabled at init, the agent runs AIDRIN readiness metrics before and after the tabular curation step on its own, so the pipeline's AI-readiness gain is *measured*.
 
@@ -27,7 +28,7 @@ This guide documents a comprehensive DSAgt demonstration using cryo-electron mic
 - An agent platform installed and **already authenticated** (e.g., `claude` for Claude Code)
 - `uv` installed. Enabling the readiness gate at `dsagt init` installs AIDRIN itself
   (one-time, shared across projects, Python 3.10-3.12)
-- ~2 GB disk space for the cryo-EM test data
+- ~22 GB disk space for the cryo-EM test data
 - Git installed
 
 ## Setup
