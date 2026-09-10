@@ -466,7 +466,9 @@ class TestInitProject:
         assert (pdir / "codes" / "aidrin" / "scripts" / "aidrin.py").exists()
         assert load_config("gated")["readiness"] == block
 
-    def test_readiness_install_failure_keeps_config(self, monkeypatch, capsys):
+    def test_readiness_install_failure_keeps_config(
+        self, monkeypatch, capsys, tmp_path
+    ):
         """A failed AIDRIN install is reported and the config still carries
         the expected executable path so a re-init can retry."""
         from dsagt import readiness as rd
@@ -474,6 +476,12 @@ class TestInitProject:
         def boom():
             raise RuntimeError("no network")
 
+        # AIDRIN_EXECUTABLE is fixed at import time from the real registry
+        # dir, where a developer machine may hold an install; point it at a
+        # path that does not exist so the install path runs.
+        monkeypatch.setattr(
+            rd, "AIDRIN_EXECUTABLE", tmp_path / "aidrin" / "bin" / "aidrin"
+        )
         monkeypatch.setattr(rd, "ensure_aidrin", boom)
         block = rd.readiness_block("aidrin")
         init_project("gated", "claude", exclude=["all"], readiness=block)
