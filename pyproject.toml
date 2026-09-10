@@ -79,8 +79,6 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 dsagt = ["py.typed", "codes/**/*", "dsagt_instructions.md"]
-# Built-in skill directories are data inside the dsagt.skills package.
-"dsagt.skills" = ["**/*.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

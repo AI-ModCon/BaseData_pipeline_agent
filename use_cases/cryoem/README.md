@@ -75,8 +75,8 @@ dsagt start cryoem-pipeline
 
 ## Execution
 
-Paste these prompts one at a time. The readiness gate placed the `aidrin` code at
-`codes/aidrin/SKILL.md` and its rules in the instructions file, so the agent runs the gate around
+Paste these prompts one at a time. Init installed the `aidrin` skill at
+`skills/aidrin/SKILL.md` and the readiness gate put its rules in the instructions file, so the agent runs the gate around
 the tabular steps without being told to; the micrograph (image) steps are not gated.
 
 ### 1. Create a cryo-EM knowledge collection
