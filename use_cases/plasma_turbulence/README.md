@@ -13,19 +13,20 @@ order: 80
 # DSAgt Demo: XGC Training-Data Preparation
 
 > **Estimated time:** ~30 minutes on an HPC login node — not a 10-minute demo.
-> XGC output is HPC-scale ADIOS2 BP5 data (up to ~1.3M mesh nodes), and the
-> scripts require `adios2` and `torch`, plus MATEY's `BaseCFDGraphDataset` for
-> the final dataset step. No case is hosted with this demo: point the paths
-> below at your own XGC run.
+> XGC output is HPC-scale ADIOS2 BP5 data (up to ~1.3M mesh nodes). No case is
+> hosted with this demo: point the paths below at your own XGC run. The
+> walkthrough needs only `adios2`; the training-ready dataset class in the
+> appendix depends on a module that is not publicly available.
 
 This guide prepares training data for machine-learning surrogates of plasma turbulence from raw
 [XGC](https://xgc.pppl.gov/) (X-point Gyrokinetic Code) simulation output. The
-five scripts in [`skills/xgc-ai-training/`](skills/xgc-ai-training/) form a
-check → operate → check pipeline: verify the case structure, summarize its
-physics content, preprocess the BP5 files into `[nphi, n_nodes]` float32 npz
-files, validate the result, and expose it as a PyTorch `Dataset`. The agent
-registers the scripts as DSAgt codes and runs each stage through `dsagt-run`,
-so every step is recorded in `trace_archive/` with its audit report.
+four command-line scripts in [`skills/xgc-ai-training/`](skills/xgc-ai-training/)
+form a check → operate → check pipeline: verify the case structure, summarize
+its physics content, preprocess the BP5 files into `[nphi, n_nodes]` float32
+npz files, and validate the result. The agent registers the scripts as DSAgt
+codes and runs each stage through `dsagt-run`, so every step is recorded in
+`trace_archive/` with its audit report. A fifth script exposes the npz files
+as a PyTorch `Dataset`; see the appendix.
 
 **Data format:** ADIOS2 BP5, one directory per simulation run, containing
 `xgc.mesh.bp` (static 2D poloidal mesh), `xgc.3d.NNNNN.bp` (per-timestep
@@ -43,8 +44,8 @@ for the variable reference. Representative cases:
 
 - DSAgt installed (`uv sync --all-groups`) and an agent platform installed and
   **already authenticated** (BYOA — dsagt writes no credentials).
-- `adios2` and `torch` importable in the environment `dsagt` runs in, and
-  MATEY's `BaseCFDGraphDataset` (the `graph_datasets` module) for step 6.
+- `adios2` importable in the environment `dsagt` runs in
+  (`uv sync --all-groups` installs it through the `use-cases` dependency group).
 - An XGC case directory of your own (the KSTART case in the table above is the
   smallest of the three and the one the expected values below refer to).
 
@@ -129,17 +130,7 @@ audit/step3_post.json. Report any shape, dtype, or time-monotonicity problems.
 
 **Expect:** `check_xgc_preprocessed.py` returns `"status": "ok"`.
 
-### 6. Smoke-test the dataset class
-
-```text
-Run the xgc_dataset.py smoke test on data/<case_dir>_npz with n_steps 1 and
-leadtime_max 1, and report the sample tensor shapes.
-```
-
-**Expect:** `XGCGraphDataset` builds its cached `topology.pt` and returns
-`sample.x` of shape `[N, n_steps, 7+F]`, `sample.y` of `[N, F]`, `sample.pos` of `[N, 2]`.
-
-### 7. Reconstruct the pipeline
+### 6. Reconstruct the pipeline
 
 ```text
 Reconstruct the preprocessing pipeline from the execution records as a bash
@@ -155,7 +146,7 @@ ITER and NSTX cases.
    `step3_post.json`, each with `"status": "ok"`.
 3. `data/<case_dir>_npz/` contains `mesh.npz`, `meta.json`, and three step files.
 4. `trace_archive/` holds one execution record per stage.
-5. A reconstructed pipeline script replays stages 2–5 against a parameterized case directory.
+5. A reconstructed pipeline script replays steps 2–5 against a parameterized case directory.
 6. MLflow traces (in the serverless `mlflow.db` store) capture the session —
    `mlflow ui --backend-store-uri sqlite:///$PROJ/mlflow.db`.
 
@@ -167,9 +158,9 @@ ITER and NSTX cases.
 | Registering several scripts as codes from a skill's documentation | 1 |
 | Registry search | 1 |
 | Paired check / operate / check execution with audit reports | 2–5 |
-| Code execution with provenance through `dsagt-run` | 2–6 |
+| Code execution with provenance through `dsagt-run` | 2–5 |
 | User confirmation of pipeline decisions before execution | 4 |
-| Pipeline reconstruction with a parameterized input | 7 |
+| Pipeline reconstruction with a parameterized input | 6 |
 
 ## Cleanup
 
@@ -185,3 +176,22 @@ dsagt rm xgc-training -y
   axis order automatically and `check_xgc_preprocessed.py` verifies it.
 - `meta.json` records `field_availability` per field so the dataset class can
   filter to steps where all requested fields are present.
+
+## Appendix: the training-ready dataset class
+
+`scripts/xgc_dataset.py` wraps a preprocessed directory as `XGCGraphDataset`,
+a PyTorch `Dataset` for MeshGraphNets-style surrogates. It subclasses
+`BaseCFDGraphDataset` from the `graph_datasets` module of the MATEY project,
+which is not publicly available, and it needs `torch` and `torch_geometric`.
+Without that module the script does not import, so this step is outside the
+walkthrough; with it, the step continues the session after step 5:
+
+```text
+Run the xgc_dataset.py smoke test on data/<case_dir>_npz with n_steps 1 and
+leadtime_max 1, and report the sample tensor shapes.
+```
+
+**Expect:** `XGCGraphDataset` builds its cached `topology.pt` and returns
+`sample.x` of shape `[N, n_steps, 7+F]`, `sample.y` of `[N, F]`, and
+`sample.pos` of `[N, 2]`. The skill's Stage 5 section shows the `Dataset`
+constructor and `build_datasets` for multi-case splits.
