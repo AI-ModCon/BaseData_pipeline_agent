@@ -33,11 +33,7 @@ def _make_skill_server(tmp_path):
         index_dir=tmp_path / "kb_index",
         default_embedder="local",
     )
-    skill_reg = SkillRegistry(
-        source_skills_dir=None,  # package default (empty bundled is fine)
-        runtime_dir=str(runtime_dir),
-        kb=kb,
-    )
+    skill_reg = SkillRegistry(runtime_dir=str(runtime_dir), kb=kb)
     server = create_skill_server(skill_reg, kb, runtime_dir=str(runtime_dir))
     return server, skill_reg, kb
 

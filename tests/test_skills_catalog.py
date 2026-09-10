@@ -50,29 +50,58 @@ def test_repo_slug_is_host_agnostic():
     assert sc._repo_slug("https://gitlab.osti.gov/genesis/genesis-skills") == (
         "genesis-genesis-skills"
     )
-    assert sc._repo_slug("git@gitlab.osti.gov:genesis/genesis-skills.git") == (
-        "genesis-genesis-skills"
+    assert sc._repo_slug("git@github.com:AI-ModCon/genesis-skills.git") == (
+        "ai-modcon-genesis-skills"
     )
 
 
 def test_known_source_genesis_covers_whole_skills_tree():
     spec = sc.resolve_source("genesis")
-    assert spec["url"] == "https://gitlab.osti.gov/genesis/genesis-skills"
+    assert spec["url"] == "https://github.com/AI-ModCon/genesis-skills"
     # subdir scopes the recursive SKILL.md walk to the whole skills/ tree so
     # every category (hpc, huggingface, langchain, …) is discoverable.
     assert spec["subdir"] == "skills"
     assert spec["branch"] == "main"
 
 
-def test_known_source_aidrin_scopes_to_claude_skills_dir():
-    # AIDRIN keeps its skill under .claude/skills, so a bare URL (subdir=None)
-    # would clone the whole repo including examples/sample_data; the known
-    # source pins the subdir and the develop branch where the skill exists.
-    spec = sc.resolve_source("aidrin")
-    assert spec["url"] == "https://github.com/idtlab/AIDRIN"
-    assert spec["subdir"] == ".claude/skills"
-    assert spec["branch"] == "develop"
-    assert sc._repo_slug(spec["url"]) == "idtlab-aidrin"
+def test_base_skills_name_their_upstream_sources():
+    # ``skill-creator`` is maintained in the genesis catalog; ``aidrin`` is the
+    # AIDRIN repo's own skill under .claude/skills on its develop branch (a
+    # bare URL would clone the whole repo including examples/sample_data).
+    by_name = {b["name"]: sc.resolve_source(b["source"]) for b in sc.BASE_SKILLS}
+    assert by_name["skill-creator"]["url"] == sc.KNOWN_SOURCES["genesis"]["url"]
+    assert by_name["aidrin"]["url"] == "https://github.com/idtlab/AIDRIN"
+    assert by_name["aidrin"]["subdir"] == ".claude/skills"
+    assert by_name["aidrin"]["branch"] == "develop"
+    assert "aidrin" not in sc.KNOWN_SOURCES
+
+
+def test_install_base_skills_resyncs_each_source_and_installs(tmp_path, monkeypatch):
+    """Each base skill is re-cloned from its source (force) and installed by
+    a source-qualified name, replacing any existing project copy."""
+    cache = tmp_path / "cache"
+    synced = []
+
+    def fake_sync(source, *, kb=None, cache_dir, force=False):
+        # Materialize the skill where a real clone would put it.
+        slug = sc._repo_slug(source["url"])
+        synced.append((slug, force))
+        subdir = source.get("subdir") or ""
+        for b in sc.BASE_SKILLS:
+            if sc.resolve_source(b["source"])["url"] == source["url"]:
+                _mkskill(cache_dir / slug / subdir / "x" / b["name"], b["name"])
+        return {"slug": slug}
+
+    monkeypatch.setattr(sc, "sync_source", fake_sync)
+    proj = tmp_path / "proj"
+    stale = _mkskill(proj / "skills" / "aidrin", "aidrin", desc="stale")
+
+    results = sc.install_base_skills(proj, cache_dir=cache)
+    assert [r["name"] for r in results] == ["skill-creator", "aidrin"]
+    assert synced == [("ai-modcon-genesis-skills", True), ("idtlab-aidrin", True)]
+    assert (proj / "skills" / "skill-creator" / "SKILL.md").exists()
+    assert "stale" not in (stale / "SKILL.md").read_text()
+    assert (proj / "skills" / "aidrin" / "PROVENANCE.txt").exists()
 
 
 def test_persist_source_to_config_appends_and_dedupes(tmp_path):

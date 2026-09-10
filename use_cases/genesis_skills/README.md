@@ -12,8 +12,8 @@ order: 60
 # DSAgt Demo: Genesis Skills for a Data-Curation Pipeline
 
 > **Estimated time:** ~10 minutes (the data is tiny; the one external
-> dependency is a shallow clone of the Genesis catalog from OSTI GitLab — needs
-> network access to `gitlab.osti.gov`).
+> dependency is a shallow clone of the Genesis catalog from GitHub — needs
+> network access to `github.com`).
 
 An end-to-end **data-preparation** walkthrough that exercises the skill catalog
 against the **Genesis** source (OSTI GitLab). The agent pulls in the
@@ -30,8 +30,8 @@ end with Claude Code on Sonnet 4.5.
 
 - DSAgt installed (`uv sync --all-groups`) and an agent platform installed and
   **already authenticated** (BYOA — dsagt writes no credentials).
-- Git, with network access to `gitlab.osti.gov` (the Genesis catalog clones
-  from OSTI GitLab, not GitHub).
+- Git, with network access to `github.com` (the Genesis catalog clones from
+  `AI-ModCon/genesis-skills`).
 - Embedding credentials are optional — `search_skills` uses semantic search
   when `EMBEDDING_*` is set and falls back to a keyword scorer otherwise.
 
@@ -67,7 +67,7 @@ Confirmation checks are consolidated in **Post-Conditions** below.
 Enable the "genesis" skill source so we have the GENESIS / ModCon data-curation skills available. Then tell me how many skills it indexed.
 ```
 
-**Expect:** `add_skill_source(source="genesis")` → a shallow clone of OSTI GitLab,
+**Expect:** `add_skill_source(source="genesis")` → a shallow clone from GitHub,
 its skills indexed, source written to `.dsagt/config.yaml`.
 
 ### 2. Find and install the curation skills
@@ -76,7 +76,7 @@ its skills indexed, source written to `.dsagt/config.yaml`.
 Search the catalog for two skills — one that creates a datacard / dataset documentation for a dataset, and one that validates Croissant / JSON-LD dataset metadata — and install the best match for each into this project.
 ```
 
-**Expect:** `search_skills` surfaces **`generating-datacards`** and
+**Expect:** `search_skills` surfaces **`datacard-generator`** and
 **`croissant-validator`** → `install_skill` for each. Both are installed into
 `<project>/skills/` and mirrored into the agent's native skills directory at
 install time, each with a `PROVENANCE.txt` crediting the Genesis source.
@@ -84,7 +84,7 @@ install time, each with a `PROVENANCE.txt` crediting the Genesis source.
 ### 3. Generate the datacard for the finished dataset
 
 ```text
-Use the generating-datacards skill to write a Level 1 datacard for mock_data/dataset/catalyst_screening.csv. Pull the field definitions, measurement methodology, provenance, and license from the data dictionary and measurement protocol under mock_data/domain/ — don't invent them, and note anything the documents leave unspecified rather than asking. Save it to audit/catalyst_screening_datacard.md. Then compare your sections against mock_data/expected_datacard.md and report anything missing.
+Use the datacard-generator skill to write a Level 1 datacard for mock_data/dataset/catalyst_screening.csv. Pull the field definitions, measurement methodology, provenance, and license from the data dictionary and measurement protocol under mock_data/domain/ — don't invent them, and note anything the documents leave unspecified rather than asking. Save it to audit/catalyst_screening_datacard.md. Then compare your sections against mock_data/expected_datacard.md and report anything missing.
 ```
 
 **Expect:** the agent reads the installed skill's `SKILL.md` and the two domain
@@ -109,14 +109,14 @@ Confirm from a shell (the native skills directory is `.claude/skills/` for Claud
 
 ```bash
 dsagt info genesis-skills                  # KB lists skills_catalog__genesis-genesis-skills
-ls "$PROJ/skills/"                         # generating-datacards  croissant-validator
-cat "$PROJ/skills/generating-datacards/PROVENANCE.txt"
+ls "$PROJ/skills/"                         # aidrin  croissant-validator  datacard-generator  skill-creator
+cat "$PROJ/skills/datacard-generator/PROVENANCE.txt"
 ls "$PROJ/audit/"                          # catalyst_screening_datacard.md
 ```
 
 1. The KB holds a `skills_catalog__genesis-genesis-skills` collection
    (searchable via `search_skills`).
-2. `generating-datacards` and `croissant-validator` are installed into
+2. `datacard-generator` and `croissant-validator` are installed into
    `<project>/skills/` and mirrored into the agent's native skills directory,
    each with a `PROVENANCE.txt` crediting the Genesis source. The next session
    auto-invokes them natively; this session used them by reading their

@@ -499,7 +499,6 @@ def main():
         kb=kb,
     )
     skill_reg = SkillRegistry(
-        source_skills_dir=None,
         runtime_dir=str(project_dir),
         kb=kb,
     )

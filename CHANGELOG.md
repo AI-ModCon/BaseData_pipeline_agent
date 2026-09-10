@@ -8,6 +8,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- DSAgt holds no skills of its own. `dsagt init` installs two base skills into
+  `<project>/skills/` from the repositories that maintain them, re-cloning each
+  so the copy matches upstream: `skill-creator` from the genesis catalog
+  (`skills/basedata-skills/`) and `aidrin` from `idtlab/AIDRIN`. The `aidrin`
+  skill-catalog source is gone (it held that one skill), and so is the built-in
+  `aidrin` gate code: the readiness gate now installs AIDRIN and instructs the
+  agent to run the profile's metrics through the `aidrin` skill's CLI, wrapped
+  by `dsagt-run`.
+- The `genesis` skill source is `github.com/AI-ModCon/genesis-skills`.
 - Intel Macs are no longer a supported platform. The `darwin/x86_64` entry in
   `required-environments` held every environment on torch 2.2.2 and NumPy 1.x;
   the lock now resolves torch 2.14, NumPy 2.x, transformers 5.x,

@@ -55,6 +55,11 @@ def _use_tmp_registry(tmp_path):
     def _noop_ensure_assets(*_a, **_k):
         return {"built": [], "skipped": []}
 
+    # The base skills are fetched from their upstream repos at init; stub
+    # that too (``test_init_installs_base_skills`` covers the wiring).
+    def _noop_install_base_skills(*_a, **_k):
+        return []
+
     with patch("dsagt.session._load_registry", fake_load):
         with patch("dsagt.session._save_registry", fake_save):
             with patch("dsagt.session.register_project", fake_register):
@@ -64,7 +69,11 @@ def _use_tmp_registry(tmp_path):
                             "dsagt.commands.setup_core_kb.ensure_assets",
                             _noop_ensure_assets,
                         ):
-                            yield
+                            with patch(
+                                "dsagt.skills.install_base_skills",
+                                _noop_install_base_skills,
+                            ):
+                                yield
 
 
 # ---------------------------------------------------------------------------
@@ -450,10 +459,9 @@ class TestInitProject:
         assert not (pdir / "mlflow.db").exists()
         assert not (pdir / "mlflow").exists()
 
-    def test_readiness_opt_in_copies_aidrin_code_and_writes_block(self, tmp_path):
-        """The bundled ``aidrin`` code lands only in projects that opted in,
-        and the config records the readiness block.  A user-supplied
-        executable skips provisioning entirely."""
+    def test_readiness_opt_in_writes_block_only(self, tmp_path):
+        """The gate is a config block, not a code: no ``codes/aidrin`` is
+        created either way.  A user-supplied executable skips provisioning."""
         from dsagt.readiness import readiness_block
 
         pdir = init_project("plain", "claude", exclude=["all"])
@@ -462,9 +470,29 @@ class TestInitProject:
 
         block = readiness_block("aidrin", executable=tmp_path / "aidrin")
         pdir = init_project("gated", "claude", exclude=["all"], readiness=block)
-        assert (pdir / "codes" / "aidrin" / "SKILL.md").exists()
-        assert (pdir / "codes" / "aidrin" / "scripts" / "aidrin.py").exists()
+        assert not (pdir / "codes" / "aidrin").exists()
         assert load_config("gated")["readiness"] == block
+
+    def test_init_installs_base_skills(self, tmp_path, capsys):
+        """Every init fetches the base skills into ``<project>/skills/``;
+        a failed fetch is a warning, not an abort."""
+        calls = []
+
+        def fake_install(pdir, **_k):
+            calls.append(Path(pdir))
+            return []
+
+        with patch("dsagt.skills.install_base_skills", fake_install):
+            pdir = init_project("base", "claude", exclude=["all"])
+        assert calls == [pdir]
+
+        def boom(pdir, **_k):
+            raise RuntimeError("no network")
+
+        with patch("dsagt.skills.install_base_skills", boom):
+            init_project("offline", "claude", exclude=["all"])
+        assert "no network" in capsys.readouterr().out
+        assert load_config("offline")["project"] == "offline"
 
     def test_readiness_install_failure_keeps_config(
         self, monkeypatch, capsys, tmp_path
