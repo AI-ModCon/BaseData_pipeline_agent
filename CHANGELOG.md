@@ -14,6 +14,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   sentence-transformers 6.x, and tree-sitter-language-pack 1.16.
 - `requires-python` is `>=3.12` again; CI tests 3.12 and 3.13.
 
+### Fixed
+
+- `run_command` accepted its `command` as one argv element, so a code spec's
+  multi-word executable (`dsagt-run --code x -- python ...`) failed with
+  "not found". The string is now split like a shell would.
+
 ## [0.2.0] - 2026-07-08
 
 A large release. It adds an **external skill-catalog system**, consolidates the
