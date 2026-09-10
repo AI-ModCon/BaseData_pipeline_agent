@@ -34,7 +34,8 @@ Both parts use real `pymatgen.io.vasp` parsing. The slab data is a mock: valid
 VASP format with the OUTCAR reduced to the lines pymatgen reads. The NEB data is
 a fixture from the pymatgen test suite. Reference outputs for both
 (`expected_isaac_record.json` for the slab, `isaac_neb_record.json` for the NEB)
-come with the data, so the agent's records can be checked.
+come with the data, so the agent's records can be checked. The walkthrough has
+been run end to end with Claude Code on Sonnet 4.5.
 
 Folder contents:
 
