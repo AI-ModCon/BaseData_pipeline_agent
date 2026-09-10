@@ -123,8 +123,7 @@ positional candidate and reference files and the options --rtol, --atol,
 ```text
 Do a dry run of convert-to-well on
 data/blastnet_data/lifted_hydrogen_jet/hydrogen-jet-5000 and tell me the grid
-size, the number of snapshots, and which WELL fields it would write. Use the
-exact dsagt-run command from the code spec so the execution is recorded.
+size, the number of snapshots, and which WELL fields it would write.
 ```
 
 **Expect:** 1600 × 2000 grid, 3 snapshots, eleven `t0_fields` scalars and a
@@ -134,8 +133,7 @@ exact dsagt-run command from the code spec so the execution is recorded.
 
 ```text
 Convert data/blastnet_data/lifted_hydrogen_jet/hydrogen-jet-5000 to
-well_output/lifted_hydrogen_jet_traj_5000.hdf5 with the convert-to-well code,
-using the exact dsagt-run command from its spec.
+well_output/lifted_hydrogen_jet_traj_5000.hdf5 with the convert-to-well code.
 ```
 
 ### 5. Check against the holdout reference and iterate
@@ -144,9 +142,8 @@ using the exact dsagt-run command from its spec.
 Spot-check well_output/lifted_hydrogen_jet_traj_5000.hdf5 against
 data/holdout/well_output/lifted_hydrogen_jet_traj_5000.hdf5 with 10 random
 points per dataset using the check-well-output code. If anything differs, fix
-the converter in the skill, reconvert, and check again. Run every conversion
-and check through the registered codes with their dsagt-run commands, so each
-attempt is recorded. When the spot-check passes, run the full comparison.
+the converter in the skill, reconvert with the registered code, and check
+again. When the spot-check passes, run the full comparison.
 ```
 
 **Expect:** a first pass that fails on one or more of the pitfalls the
@@ -177,19 +174,15 @@ info.json and the conversion, and note anything unknown rather than asking.
 
 ```text
 Reconstruct the conversion and validation pipeline from the execution records
-as a bash script and save it as pipeline.sh. Keep the commands as
-reconstruct_pipeline returns them — they call the converter and checker
-directly, without dsagt-run, so the script runs outside a DSAgt project. Lift
-the trajectory directory into a variable at the top so it can be rerun on the
-other BlastNet trajectories, and keep only the final converter run and its
-checks.
+as a bash script, save it as pipeline.sh, and put the trajectory directory in a
+variable at the top so it can be rerun on the other BlastNet trajectories. Keep
+only the final converter run and its checks.
 ```
 
 **Expect:** `reconstruct_pipeline(format="bash")` orders the recorded runs by
 their input/output files; `pipeline.sh` holds the dry run, the conversion, and
 the two checks as plain `python` (or `uv run`) commands with `TRAJ_DIR` at the
-top. The wrapper belongs to the session that produced the records, not to the
-script; a rerun inside a DSAgt project can add it back.
+top. The script calls the tools directly so it runs outside a DSAgt project.
 
 ## Post-Conditions
 
