@@ -105,7 +105,9 @@ Where can I get more skills from? List the skill sources you can pull from and w
 
 **Expect:** `list_skill_sources` → the known sources (`k-dense-ai`, `anthropic`,
 `antigravity`, `composio`, `genesis`) with URLs, each flagged available but not
-synced.
+synced. The catalog cache under `~/dsagt-projects/.skill_sources/` is shared
+across projects, so a source another project has already cloned shows as
+synced here, and step 3 becomes a refresh.
 
 ### 3. Sync a source
 
@@ -187,7 +189,15 @@ energy series.
 `trace_archive/`; pymatgen parses the five OUTCARs (endpoints plus three
 intermediate images); the final record's `computation.transition_state` has
 `method: NEB`, `images: 3`, and the Fe vacancy-migration reaction, and its
-`measurement.series` carries the five-point energy path, matching the reference.
+`measurement.series` carries the five-point energy path matching the reference:
+endpoints at −255.980 eV and −255.981 eV, a barrier of 0.325 eV at image 2.
+
+One pitfall to watch for: reading `Outcar.final_energy_wo_entrp` instead of
+`Outcar.final_energy` (the energy(sigma→0) of the last ionic step) shifts every
+energy by about 0.33 eV and the barrier to 0.309 eV. An agent may then report
+structural agreement and attribute the offset to "different calculations". The
+reference values are the last `energy(sigma->0)` line of each image's OUTCAR;
+hold it to them.
 
 ### 9. Reconstruct the pipeline
 

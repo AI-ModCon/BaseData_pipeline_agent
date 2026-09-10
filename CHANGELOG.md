@@ -17,6 +17,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   resolves beside a project that pins differently; `uv.lock` is tracked as
   the reproducible environment. `ruyaml`, which nothing imported, is removed.
 
+### Fixed
+
+- `run_command` accepted its `command` as one argv element, so a code spec's
+  multi-word executable (`dsagt-run --code x -- python ...`) failed with
+  "not found". The string is now split like a shell would.
+
 ## [0.2.0] - 2026-07-08
 
 A large release. It adds an **external skill-catalog system**, consolidates the

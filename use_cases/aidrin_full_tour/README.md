@@ -147,8 +147,18 @@ representation-rate on data/adult.csv with target income and sensitive attribute
 through the registry aidrin code.
 ```
 
-Batch config keys: `file-path`, `file-type`, `metrics`, `target-column`,
-`sensitive-attribute-column`, `columns`.
+The config is one flat mapping, not per-metric blocks; the `aidrin` code's
+`SKILL.md` documents the keys. For this step:
+
+```yaml
+file-path: data/adult.csv
+file-type: csv
+metrics: [completeness, class-imbalance, statistical-rates, representation-rate]
+target-column: income
+y-true-column: income
+sensitive-attribute-column: sex
+columns: [sex, race]
+```
 
 ### 4. Generate a datacard from the assessment
 

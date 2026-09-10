@@ -47,6 +47,7 @@ docs = [
 ]
 use-cases = [
     "h5py>=3.10",
+    "pymatgen>=2024.1",
 ]
 
 [project.optional-dependencies]
