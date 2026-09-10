@@ -21,7 +21,8 @@ order: 40
 This guide uses DSAgt to investigate the stability properties of a tokamak
 configuration from linear MHD simulation output produced by the
 [M3D-C1](https://sites.google.com/pppl.gov/m3d-c1) unstructured-mesh
-finite-element code. The Python modules under [`scripts/`](scripts/) — `hdf5.py`,
+finite-element code. The walkthrough has been run end to end with Claude Code
+on Sonnet 4.5. The Python modules under [`scripts/`](scripts/) — `hdf5.py`,
 `m3dc1_tools.py`, `m3dc1_plots.py`, and the `m3dc1/` wrapper package — provide
 the functions for reading M3D-C1 HDF5 output, evaluating fields from their
 basis-function coefficients, computing equilibrium and spectral quantities, and
@@ -75,13 +76,14 @@ cp -r use_cases/tokamak_stability/scripts "$PROJ/scripts"     # the modules, the
 cp -r use_cases/tokamak_stability/skills/m3dc1-skill "$PROJ/skills/"
 export PYTHONPATH=$PROJ/scripts:$PYTHONPATH
 export M3DC1_DATA_DIR=$PROJ/data/m3dc1_data
-python -m pytest "$PROJ/scripts/tests" -q      # checks the environment: failures naming `fpy` mean fusion-io is not importable
+python -m pytest "$PROJ/scripts/tests" -q      # all 91 pass with fusion-io and the data in place
 dsagt start tokamak-stability                  # mirrors the skill into the agent's native skills dir
 ```
 
-The tarball is also available from [OSF](https://osf.io/gak3v/files/). The unit
-tests run without fusion-io or data; the integration tests need both and use
-the data directory named by `M3DC1_DATA_DIR`.
+The tarball is also available from [OSF](https://osf.io/gak3v/files/). The
+integration tests need fusion-io and the data directory named by
+`M3DC1_DATA_DIR`; failures naming `fpy` or `write_neo_input` mean the
+fusion-io install is not on the path.
 
 ## Execution
 
@@ -148,16 +150,18 @@ Create plots of the standard poloidal spectra and the kinetic energy trace.
 
 ```text
 Save the poloidal spectral data for the pressure field in an HDF5 file
-pressure_spectrum.h5.
+processed_data/pressure_spectrum.h5.
 ```
 
 ```text
 Extract the electron temperature and electron density data at t=1 and place
-them in an HDF5 file electrons.h5.
+them in an HDF5 file processed_data/electrons.h5.
 ```
 
-**Expect:** both files under `processed_data/`, written by the HDF5 repackaging
-code, with the evaluated field values rather than basis coefficients.
+**Expect:** both files under `processed_data/`, written by registered codes
+(the agent registers a spectrum-computing code for the first if none exists,
+and uses the grid-evaluation code for the second), with the evaluated field
+values rather than basis coefficients.
 
 ### 7. Reconstruct the session as a rerunnable script
 
