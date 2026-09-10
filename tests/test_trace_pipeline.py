@@ -17,7 +17,7 @@ import json
 
 import pytest
 
-from dsagt.observability import MLflowSink
+from dsagt.traces import MLflowSink
 from dsagt.traces import ClaudeTranslator
 
 process_transcript = pytest.importorskip(
@@ -165,6 +165,45 @@ def test_our_llm_spans_carry_the_navigable_attributes(mlflow_sqlite):
         assert span.outputs["type"] == "message"
         # token usage present
         assert attrs.get(SpanAttributeKey.CHAT_USAGE)["input_tokens"] == 100
+
+
+def test_llm_span_usage_carries_cache_tokens(mlflow_sqlite):
+    """Cache counts reach the token-usage attribute; most of a Claude session's
+    input is cache reads, so a consumer pricing from the store needs them."""
+    import mlflow
+    from mlflow.tracing.constant import SpanAttributeKey, TokenUsageKey
+
+    transcript = [
+        _user("2026-06-19T15:49:29.000Z", "q"),
+        _asst(
+            "2026-06-19T15:49:30.000Z",
+            {"type": "text", "text": "a"},
+            usage={
+                "input_tokens": 14,
+                "output_tokens": 20,
+                "cache_read_input_tokens": 9000,
+                "cache_creation_input_tokens": 500,
+            },
+        ),
+    ]
+    trace = ClaudeTranslator().translate(
+        transcript, trace_id="trC", session_id="proj:sessC", project="parity"
+    )
+    (tid,) = MLflowSink(mlflow_sqlite, "parity").write(trace)
+    (llm,) = _llm_spans(mlflow.get_trace(tid))
+    usage = llm.attributes[SpanAttributeKey.CHAT_USAGE]
+    assert usage[TokenUsageKey.CACHE_READ_INPUT_TOKENS] == 9000
+    assert usage[TokenUsageKey.CACHE_CREATION_INPUT_TOKENS] == 500
+
+    # Absent from the transcript → absent from the attribute (mirrors autolog).
+    trace = ClaudeTranslator().translate(
+        TRANSCRIPT, trace_id="trC2", session_id="proj:sessC2", project="parity"
+    )
+    (tid,) = MLflowSink(mlflow_sqlite, "parity").write(trace)
+    for llm in _llm_spans(mlflow.get_trace(tid)):
+        usage = llm.attributes[SpanAttributeKey.CHAT_USAGE]
+        assert TokenUsageKey.CACHE_READ_INPUT_TOKENS not in usage
+        assert TokenUsageKey.CACHE_CREATION_INPUT_TOKENS not in usage
 
 
 def test_multi_turn_each_subtree_matches_autolog_on_its_slice(tmp_path, mlflow_sqlite):

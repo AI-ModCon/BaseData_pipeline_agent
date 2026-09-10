@@ -64,6 +64,17 @@ def test_known_source_genesis_covers_whole_skills_tree():
     assert spec["branch"] == "main"
 
 
+def test_known_source_aidrin_scopes_to_claude_skills_dir():
+    # AIDRIN keeps its skill under .claude/skills, so a bare URL (subdir=None)
+    # would clone the whole repo including examples/sample_data; the known
+    # source pins the subdir and the develop branch where the skill exists.
+    spec = sc.resolve_source("aidrin")
+    assert spec["url"] == "https://github.com/idtlab/AIDRIN"
+    assert spec["subdir"] == ".claude/skills"
+    assert spec["branch"] == "develop"
+    assert sc._repo_slug(spec["url"]) == "idtlab-aidrin"
+
+
 def test_persist_source_to_config_appends_and_dedupes(tmp_path):
     import yaml
 

@@ -7,7 +7,7 @@ once, then copies them per project.
 Asset namespace (the ``--include`` / ``--exclude`` selectors on ``dsagt init``):
 - ``tools``                bundled tool specs (cheap, local)
 - skill catalogs           ``genesis`` (default), ``scientific``, ``composio``, …
-- scientific collections   ``nemo_curator``, ``aidrin`` (clone external repos; docs + papers only, not source)
+- scientific collections   ``nemo_curator`` (clones the external repo; docs + papers only, not source)
 
 :data:`DEFAULT_ASSETS` (bundled tools + the genesis skill catalog) is the
 cheap set installed automatically on a machine's first project.  Embedding
@@ -99,39 +99,6 @@ quality assessment strategies.
                 # files (README, pyproject.toml, …) for install metadata.
                 "include": ["docs"],
             },
-        ],
-    },
-    "aidrin": {
-        "description": """# AIDRIN - AI Data Readiness Inspector
-
-Framework for assessing data readiness for AI/ML applications.
-
-## Key Topics
-- Data quality metrics (completeness, outliers, duplicates)
-- Fairness and bias assessment
-- Privacy evaluation
-- FAIR principle compliance
-- Feature importance analysis
-
-## Use For
-Understanding data quality requirements, assessment metrics,
-readiness evaluation for ML pipelines.
-""",
-        "sources": [
-            {
-                "type": "github",
-                "url": "https://github.com/kaveenh/AIDRIN",
-                "branch": "develop",
-                # Docs only — omit the `aidrin` source package.  The docs
-                # and the two arxiv papers below cover how to use the tool;
-                # code retrieval is better served by the agent's native
-                # file search, and skipping the source speeds ingestion.
-                # clone_github still keeps the top-level files (README,
-                # pyproject.toml, requirements.txt, …) for install metadata.
-                "include": ["docs"],
-            },
-            {"type": "arxiv", "id": "2406.19256"},  # AIDRIN paper
-            {"type": "arxiv", "id": "2404.05779"},  # Data Readiness Survey
         ],
     },
 }
@@ -297,15 +264,15 @@ def _current_dsagt_version() -> str:
 #   <catalog>      a skill-catalog source from ``skills.KNOWN_SOURCES``
 #                  (e.g. "genesis", "k-dense-ai", "composio", "antigravity")
 #   <collection>   a heavy scientific doc collection from ``COLLECTIONS``
-#                  (e.g. "nemo_curator", "aidrin" — clones external repos)
+#                  (e.g. "nemo_curator" — clones external repos)
 #
 # DEFAULT_ASSETS is the cheap core a first-ever ``dsagt init`` installs
 # automatically; everything else is opt-in via ``--include``.
 # ---------------------------------------------------------------------------
 
-#: The default per-project / first-init asset set: bundled tools + the
-#: genesis skill catalog.  Kept deliberately cheap (one small local embed +
-#: one git clone) so onboarding needs no manual step.
+#: The default per-project / first-init asset set: built-in tools + the
+#: genesis skill catalog.  Kept cheap (one small local embed + one git
+#: clone) because it installs automatically on a machine's first init.
 DEFAULT_ASSETS: tuple[str, ...] = ("codes", "genesis")
 
 

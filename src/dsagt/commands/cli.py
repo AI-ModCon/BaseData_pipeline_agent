@@ -17,7 +17,8 @@ store (no server to run).
 Usage:
     dsagt init [<project>]              # interactive; re-run to reconfigure
     dsagt init <project> --agent <platform> [--location <path>]
-                         [--include <asset>... | --exclude <asset>...]   # non-interactive
+                         [--include <asset>... | --exclude <asset>...]
+                         [--episodic] [--readiness aidrin [--readiness-executable PATH]]
     dsagt start <project>
     dsagt info <project> [--json]
     dsagt traces <project> [--port <n>]
@@ -87,7 +88,10 @@ def _confirm(text: str, default: bool = False) -> bool:
 
 def _select(message: str, options: list[str], default: str) -> str:
     """Single-select menu (arrow keys).  Aborts init on cancel (Ctrl-C)."""
-    import questionary
+    try:
+        import questionary
+    except ImportError as e:
+        raise ImportError("the interactive `dsagt init` menus need `dsagt[cli]`") from e
 
     answer = questionary.select(message, choices=options, default=default).ask()
     if answer is None:
@@ -101,7 +105,10 @@ def _checkbox(message: str, choices: list[tuple[str, str, bool]]) -> list[str]:
     *choices* is a list of ``(value, label, checked)``.  Returns the selected
     values.  Aborts init on cancel (Ctrl-C).
     """
-    import questionary
+    try:
+        import questionary
+    except ImportError as e:
+        raise ImportError("the interactive `dsagt init` menus need `dsagt[cli]`") from e
 
     qchoices = [
         questionary.Choice(title=label, value=value, checked=checked)
@@ -160,6 +167,15 @@ def _episodic_block(enabled: bool) -> dict | None:
     return {"enabled": True}
 
 
+def _readiness_block(tool: str | None, executable: str | None) -> dict | None:
+    """The ``readiness`` config block, or ``None`` when the user didn't opt in."""
+    if not tool:
+        return None
+    from dsagt.readiness import readiness_block
+
+    return readiness_block(tool, executable=executable)
+
+
 def _collect_settings(args, interactive: bool, existing: dict, pdir: Path | None):
     """Resolve the init choices (the 1:1 mirror of the config).
 
@@ -212,6 +228,17 @@ def _collect_settings(args, interactive: bool, existing: dict, pdir: Path | None
             default=bool(cur_epi.get("enabled")),
         )
         episodic = _episodic_block(enable_epi)
+
+        # Readiness gate (opt-in): AIDRIN as the per-stage check code.
+        cur_ready = existing.get("readiness", {}) or {}
+        enable_ready = _confirm(
+            "Enable the AIDRIN readiness gate? (installs AIDRIN once; the agent "
+            "runs readiness metrics before/after each pipeline stage)",
+            default=bool(cur_ready.get("tool")),
+        )
+        readiness = _readiness_block(
+            "aidrin" if enable_ready else None, cur_ready.get("executable")
+        )
     else:
         agent = args.agent or existing.get("agent")
         if not agent:
@@ -224,6 +251,10 @@ def _collect_settings(args, interactive: bool, existing: dict, pdir: Path | None
         # off.  Re-pass it on re-init — like --include/--exclude, flags are
         # authoritative on the non-interactive path.
         episodic = _episodic_block(getattr(args, "episodic", False))
+        readiness = _readiness_block(
+            getattr(args, "readiness", None),
+            getattr(args, "readiness_executable", None),
+        )
 
     return {
         "agent": agent,
@@ -232,6 +263,7 @@ def _collect_settings(args, interactive: bool, existing: dict, pdir: Path | None
         "knowledge": {"collections": collections},
         "skills": _skills_block_for(skill_names),
         "episodic": episodic,
+        "readiness": readiness,
     }
 
 
@@ -359,6 +391,7 @@ def _cmd_init(args):
         knowledge=settings["knowledge"],
         skills=settings["skills"],
         episodic=settings["episodic"],
+        readiness=settings["readiness"],
     )
 
     agent = settings["agent"]
@@ -378,6 +411,11 @@ def _cmd_init(args):
     print(f"Project directory:  {pdir}")
     print(f"Agent:              {agent}")
     print(f"Trace store:        sqlite:///{pdir}/mlflow.db")
+    if config.get("readiness"):
+        print(
+            f"Readiness gate:     {config['readiness']['tool']} "
+            f"({config['readiness']['executable']})"
+        )
 
     # 3. Startup instructions.
     print()
@@ -693,6 +731,19 @@ def main(argv=None):
         action="store_true",
         help="Enable episodic memory (captures session turns into searchable "
         "memory).  Off by default.",
+    )
+    p_init.add_argument(
+        "--readiness",
+        choices=("aidrin",),
+        default=None,
+        help="Enable the readiness gate: install the tool once and have the "
+        "agent run its metrics before/after each pipeline stage.  Off by default.",
+    )
+    p_init.add_argument(
+        "--readiness-executable",
+        default=None,
+        metavar="PATH",
+        help="Use an existing readiness-tool executable instead of installing one.",
     )
 
     p_start = sub.add_parser("start", help="Start a project session")

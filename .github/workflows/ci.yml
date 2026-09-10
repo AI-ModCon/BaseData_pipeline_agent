@@ -36,9 +36,48 @@ jobs:
       - uses: astral-sh/setup-uv@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install (all groups)
-        run: uv sync --all-groups
+      - name: Install (all groups + extras)
+        run: uv sync --all-groups --all-extras
       # `python -m pytest`, not bare `pytest`, per CLAUDE.md.  Integration tests
       # need real EMBEDDING_*/LLM_* credentials and are excluded here.
       - name: Tests (non-integration)
         run: uv run --no-sync python -m pytest -m "not integration" -q
+
+  # The guarantee downstream projects rely on: a core-only install imports
+  # every subpackage, and each extra alone supports its concern's imports.
+  # This property regresses silently without a check.
+  import-leaf:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - name: Core install imports every subpackage
+        run: |
+          uv venv .venv-core
+          uv pip install --python .venv-core/bin/python .
+          .venv-core/bin/python -c "
+          import dsagt, dsagt.traces, dsagt.knowledge, dsagt.skills
+          import dsagt.registry, dsagt.memory, dsagt.mcp, dsagt.commands
+          import dsagt.mcp.server, dsagt.commands.cli, dsagt.commands.run_code
+          from dsagt.traces import make_trace_collector, MLflowSink
+          from dsagt.knowledge import KnowledgeBase
+          from dsagt.skills import SkillsCatalog, install_into_project
+          "
+      - name: traces extra alone supports the trace pipeline
+        run: |
+          uv venv .venv-traces
+          uv pip install --python .venv-traces/bin/python ".[traces]"
+          .venv-traces/bin/python -c "
+          from dsagt.traces import make_trace_collector, MLflowSink
+          import mlflow
+          "
+      - name: kb extra alone supports the knowledge base
+        run: |
+          uv venv .venv-kb
+          uv pip install --python .venv-kb/bin/python ".[kb]"
+          .venv-kb/bin/python -c "
+          from dsagt.knowledge import KnowledgeBase
+          import chromadb
+          "

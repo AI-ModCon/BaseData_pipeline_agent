@@ -1,24 +1,23 @@
 """
-DSAgt observability — first-party span emission over the serverless MLflow store.
+DSAgt observability — the live tracer: first-party span emission over the
+serverless MLflow store.
 
-DSAGT writes every trace to one ``sqlite:///<pdir>/mlflow.db`` store (no server).
-TWO emission paths share that one store; they differ because MLflow's API forces
-it, not by accident:
+DSAGT writes every trace to one ``sqlite:///<pdir>/mlflow.db`` store (no
+server).  This module emits first-party DSAGT spans *as the MCP server /
+dsagt-run runs* via ``mlflow.start_span``, using MLflow's active-span context
+for auto-nesting and the ``obs`` proxy.  Each trace's root is tagged
+``dsagt.source`` with the MCP tool *category* the agent invoked
+(memory / skill / knowledge / registry), or ``execution`` for dsagt-run —
+set at the dispatch boundary, so the UI can filter this *debugging* view
+apart from agent traces and bucket it by concern.
 
-  * LIVE tracer (``mlflow.start_span``) — first-party DSAGT spans emitted *as the
-    MCP server / dsagt-run runs*.  Uses MLflow's active-span context for
-    auto-nesting and the ``obs`` proxy.  Each trace's root is tagged
-    ``dsagt.source`` with the MCP tool *category* the agent invoked
-    (memory / skill / knowledge / registry), or ``execution`` for dsagt-run —
-    set at the dispatch boundary, so the UI can filter this *debugging* view
-    apart from agent traces and bucket it by concern.
-  * REPLAY sink (``MLflowSink`` → ``mlflow.start_span_no_context``) — a finished
-    agent ``traces.Trace`` backfilled after the fact with the transcript's
-    original timestamps.  ``start_span`` cannot backdate (it has no
-    ``start_time_ns`` param), so replay *must* use ``start_span_no_context``;
-    live *should* use ``start_span`` (no_context establishes no active span,
-    which would kill the ``obs`` proxy and auto-nesting).  Hence two paths, one
-    store — neither is a historical leftover.
+The other emission path into the same store — replaying a finished agent
+transcript with its original timestamps — is :class:`dsagt.traces.MLflowSink`,
+which uses ``mlflow.start_span_no_context`` because ``start_span`` cannot
+backdate (it has no ``start_time_ns`` param); live tracing stays on
+``start_span`` because ``no_context`` establishes no active span, which would
+kill the ``obs`` proxy and auto-nesting.  Two paths, one store — MLflow's API
+forces the split.
 
 Layout (top → bottom)
 ---------------------
@@ -29,7 +28,6 @@ Layout (top → bottom)
                tagging:   open_span(source=…) → _attach_trace_metadata
                           (dsagt.source set on the trace's root only)
                factories: kb_* · registry_* · code_execute_span
-  replay sink  MLflowSink  (Trace → backdated spans; a traces.TraceCollector consumer)
 
 ``traced`` and ``child_span`` *open* a span; ``obs`` *annotates* whichever span
 is currently open.  All three no-op when tracing was never initialized, so
@@ -152,7 +150,17 @@ def init_tracing(
         resolve_cfg["project_dir"] = str(cfg_pdir)
         mlflow_url = resolve_tracking_uri(resolve_cfg)
 
-    import mlflow
+    try:
+        import mlflow
+    except ImportError:
+        # Never raises (see docstring): without ``dsagt[traces]`` the span
+        # helpers simply stay no-ops.
+        logger.warning(
+            "%s: mlflow is not installed (`dsagt[traces]`) — tracing disabled "
+            "for this process.",
+            service_name,
+        )
+        return
 
     mlflow.set_tracking_uri(mlflow_url)
     mlflow.set_experiment(project_name)
@@ -448,6 +456,11 @@ def child_span(name: str, *, span_type: str | None = None, **attrs: Any):
 # Every span name DSAgt emits has a factory here. Business modules call the
 # factory, never mlflow.start_span directly, so span names, attribute schemas,
 # and span types stay in one file.
+#
+# Span types are the string values of ``mlflow.entities.SpanType`` (a str
+# constant class), written literally: the factories run whether or not tracing
+# is initialized, and mlflow (``dsagt[traces]``) must not be imported on the
+# uninitialized path — only ``open_span`` touches mlflow, after its guard.
 
 # Knowledge base spans.
 
@@ -459,11 +472,9 @@ def kb_embed_span(backend: str | None, model: str | None, n_texts: int):
     kb.append, kb.add_entries).  Backend-agnostic: ``backend`` is ``"api"``
     for the HTTP embedder or ``"local"`` for sentence-transformers.
     """
-    from mlflow.entities import SpanType
-
     return child_span(
         "kb.embed",
-        span_type=SpanType.EMBEDDING,
+        span_type="EMBEDDING",
         backend=backend,
         model=model,
         n_texts=n_texts,
@@ -472,11 +483,9 @@ def kb_embed_span(backend: str | None, model: str | None, n_texts: int):
 
 def kb_index_search_span(vector_db: str | None, k: int, filtered: bool):
     """Span around an underlying vector index search call."""
-    from mlflow.entities import SpanType
-
     return child_span(
         "kb.index_search",
-        span_type=SpanType.RETRIEVER,
+        span_type="RETRIEVER",
         vector_db=vector_db,
         k=k,
         filtered=filtered,
@@ -500,20 +509,14 @@ def kb_rerank_span(model: str | None, n_pairs: int):
 
 def registry_save_code_span(code_name: str | None):
     """Span around ``save_code_spec``."""
-    from mlflow.entities import SpanType
-
-    return child_span(
-        "registry.save_code_spec", span_type=SpanType.TOOL, code_name=code_name
-    )
+    return child_span("registry.save_code_spec", span_type="TOOL", code_name=code_name)
 
 
 def registry_install_deps_span(packages: list[str] | None):
     """Span around an ``install_dependencies`` call."""
-    from mlflow.entities import SpanType
-
     return child_span(
         "registry.install_dependencies",
-        span_type=SpanType.TOOL,
+        span_type="TOOL",
         package_count=len(packages) if packages else 0,
         # First few package names are useful in the UI for at-a-glance
         # identification; full list is in the LLM call record if needed.
@@ -523,10 +526,8 @@ def registry_install_deps_span(packages: list[str] | None):
 
 def registry_reconstruct_pipeline_span(fmt: str | None):
     """Span around a ``reconstruct_pipeline`` call."""
-    from mlflow.entities import SpanType
-
     return child_span(
-        "registry.reconstruct_pipeline", span_type=SpanType.TOOL, format=fmt or "bash"
+        "registry.reconstruct_pipeline", span_type="TOOL", format=fmt or "bash"
     )
 
 
@@ -543,13 +544,10 @@ def code_execute_span(record_id: str, code_name: str):
     ``dsagt.source=execution`` — its own bucket, distinct from the four MCP tool
     categories, since these are actual code runs rather than meta-ops.
     """
-    from mlflow.entities import SpanType
 
     @contextmanager
     def _wrapper():
-        with open_span(
-            "code.execute", span_type=SpanType.TOOL, source="execution"
-        ) as span:
+        with open_span("code.execute", span_type="TOOL", source="execution") as span:
             if span is None:
                 yield None
                 return
@@ -558,163 +556,3 @@ def code_execute_span(record_id: str, code_name: str):
             yield span
 
     return _wrapper()
-
-
-# ===========================================================================
-# Replay sink — finished agent Trace → backdated MLflow spans
-# ===========================================================================
-
-_S_PER_NS = 1e9
-
-
-def _to_ns(epoch_s: float | None) -> int | None:
-    return int(epoch_s * _S_PER_NS) if epoch_s is not None else None
-
-
-class MLflowSink:
-    """Render a :class:`~dsagt.traces.Trace` into MLflow spans (a trace consumer).
-
-    The agent half of observability: where ``@traced`` / ``obs`` emit DSAGT's
-    own first-party debug spans live, this replays a finished transcript's
-    :class:`~dsagt.traces.Trace` after the fact into the *same* store.  It uses
-    ``mlflow.start_span_no_context`` — the only API that accepts an explicit
-    ``parent_span`` and backdated ``start_time_ns`` — and mirrors the span
-    conventions of MLflow's own ``claude_code`` autolog so foreign traces render
-    identically in the Chat UI: an AGENT root, ``llm`` children carrying
-    ``message.format="anthropic"`` + ``mlflow.chat.tokenUsage``, and
-    ``tool_<name>`` children.  Agent traces carry no ``dsagt.source`` tag, so
-    they stay in the normal view, separate from the internal debug traces.
-
-    A session ``Trace`` carries one AGENT subtree per turn; the sink emits **one
-    MLflow trace per AGENT root**, matching the per-prompt granularity autolog's
-    Stop hook produces.  MLflow mints its own trace/span ids, so each trace is
-    tagged ``dsagt.trace_id = <trace_id>:<root span_id>`` (a stable per-turn
-    idempotency key).
-
-    A *consumer* of :class:`~dsagt.traces.TraceCollector`: ``name`` keys its own
-    ack file (``.dsagt/trace_acks_mlflow.json``); ``write`` logs the trace.
-    Spans are plain dicts (see ``traces`` module docstring), so this reads them
-    directly — no per-object serialization.
-    """
-
-    name = "mlflow"
-
-    def __init__(self, tracking_uri: str, experiment: str):
-        self._uri = tracking_uri
-        self._experiment = experiment
-
-    def write(self, trace) -> list[str]:
-        """Log every turn subtree; return the MLflow trace id of each."""
-        import mlflow
-
-        mlflow.set_tracking_uri(self._uri)
-        mlflow.set_experiment(trace.project or self._experiment)
-
-        children: dict[str, list] = {}
-        for span in trace.spans:
-            if span["parent_id"] is not None:
-                children.setdefault(span["parent_id"], []).append(span)
-
-        trace_ids = []
-        for root in trace.spans:
-            if root["parent_id"] is None:
-                trace_ids.append(
-                    self._emit_subtree(root, children.get(root["span_id"], []), trace)
-                )
-        return trace_ids
-
-    def _emit_subtree(self, root, children, trace) -> str:
-        """Emit one MLflow trace for an AGENT ``root`` and its direct children."""
-        import mlflow
-        from mlflow.entities import SpanType
-        from mlflow.tracing.constant import (
-            SpanAttributeKey,
-            TokenUsageKey,
-            TraceMetadataKey,
-        )
-        from mlflow.tracing.trace_manager import InMemoryTraceManager
-
-        kind_to_type = {
-            "AGENT": SpanType.AGENT,
-            "LLM": SpanType.LLM,
-            "TOOL": SpanType.TOOL,
-            "OTHER": SpanType.UNKNOWN,
-        }
-
-        ml_root = mlflow.start_span_no_context(
-            name=root["name"],
-            span_type=kind_to_type[root["kind"]],
-            inputs={"prompt": root["attributes"].get("prompt", "")},
-            start_time_ns=_to_ns(root["start_time"]),
-        )
-
-        for span in children:
-            if span["kind"] == "LLM":
-                child = mlflow.start_span_no_context(
-                    name=span["name"],
-                    parent_span=ml_root,
-                    span_type=SpanType.LLM,
-                    start_time_ns=_to_ns(span["start_time"]),
-                    inputs={
-                        "model": span["model"] or "unknown",
-                        "messages": span["request"],
-                    },
-                    attributes={
-                        "model": span["model"] or "unknown",
-                        SpanAttributeKey.MESSAGE_FORMAT: "anthropic",
-                    },
-                )
-                if span["usage"]:
-                    inp = span["usage"].get("input_tokens") or 0
-                    out = span["usage"].get("output_tokens") or 0
-                    child.set_attribute(
-                        SpanAttributeKey.CHAT_USAGE,
-                        {
-                            TokenUsageKey.INPUT_TOKENS: inp,
-                            TokenUsageKey.OUTPUT_TOKENS: out,
-                            TokenUsageKey.TOTAL_TOKENS: inp + out,
-                        },
-                    )
-                child.set_outputs(
-                    {
-                        "type": "message",
-                        "role": "assistant",
-                        "content": span["response"],
-                    }
-                )
-            else:  # TOOL / OTHER
-                child = mlflow.start_span_no_context(
-                    name=span["name"],
-                    parent_span=ml_root,
-                    span_type=kind_to_type[span["kind"]],
-                    start_time_ns=_to_ns(span["start_time"]),
-                    inputs=span["attributes"].get("input", {}),
-                    attributes={
-                        "tool_name": span["attributes"].get("tool_name"),
-                        "tool_id": span["attributes"].get("tool_id"),
-                    },
-                )
-                child.set_outputs({"result": span["attributes"].get("result", "")})
-            child.end(end_time_ns=_to_ns(span["end_time"]))
-
-        # Trace-level metadata: session correlation + the per-turn canonical id
-        # (idempotency key) + request/response previews for the trace list.
-        try:
-            mgr = InMemoryTraceManager.get_instance()
-            with mgr.get_trace(ml_root.trace_id) as in_mem:
-                meta = {
-                    TraceMetadataKey.TRACE_SESSION: trace.session_id,
-                    "dsagt.trace_id": f"{trace.trace_id}:{root['span_id']}",
-                    "dsagt.agent": trace.agent,
-                }
-                in_mem.info.trace_metadata = {**in_mem.info.trace_metadata, **meta}
-                if prompt := root["attributes"].get("prompt"):
-                    in_mem.info.request_preview = str(prompt)[:1000]
-                if response := root["attributes"].get("response"):
-                    in_mem.info.response_preview = str(response)[:1000]
-        except Exception as e:  # noqa: BLE001
-            logger.warning("MLflowSink: could not stamp trace metadata: %s", e)
-
-        ml_root.set_outputs({"response": root["attributes"].get("response", "")})
-        ml_root.end(end_time_ns=_to_ns(root["end_time"]))
-        return ml_root.trace_id

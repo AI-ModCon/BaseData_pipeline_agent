@@ -27,7 +27,7 @@ DSAgt connects an MCP-compatible AI coding agent to code registration, a semanti
 ```bash
 python3.12 -m venv ~/.venvs/dsagt          # or: conda create -n dsagt python=3.12 && conda activate dsagt
 source ~/.venvs/dsagt/bin/activate         # (Windows venv: ~\.venvs\dsagt\Scripts\activate)
-pip install "git+https://github.com/AI-ModCon/dsagt.git"
+pip install "dsagt[all] @ git+https://github.com/AI-ModCon/dsagt.git"
 dsagt --version                            # 0.2.0
 ```
 
@@ -48,10 +48,10 @@ Or, if you use a VS Code agent extension, just open the folder as a project in V
 To upgrade later, reinstall — re-running `dsagt init` reconfigures an existing project in place:
 
 ```bash
-pip install --upgrade "git+https://github.com/AI-ModCon/dsagt.git"
+pip install --upgrade "dsagt[all] @ git+https://github.com/AI-ModCon/dsagt.git"
 ```
 
-> Pin to a specific release: e.g. `pip install "git+https://github.com/AI-ModCon/dsagt.git@0.2.0"`.
+> Pin to a specific release: e.g. `pip install "dsagt[all] @ git+https://github.com/AI-ModCon/dsagt.git@0.2.0"`.
 <!-- md-shared:install:end -->
 
 ### For development
@@ -125,7 +125,7 @@ The same sequence of project initialization/prompts runs automatically for insta
 
 - **Code Specs** — DSAgt's built-in code specs, always set up so the agent finds them via `search_registry` from the first session.
 - **Skill Corpus** — the skill sources you pick at init (default `genesis`) are cloned and indexed so `search_skills` returns installable skills. The built-in `skill-creator` is discovered natively by the agent.
-- **Knowledge Collections** — optional reference document sets you pick at init (`nemo_curator`, `aidrin`), downloaded and indexed for data-curation domain knowledge.
+- **Knowledge Collections** — optional reference document sets you pick at init (`nemo_curator`), downloaded and indexed for data-curation domain knowledge.
 
 The default embedder is a local sentence-transformers model (~130 MB of weights downloaded on first run).
 
@@ -193,9 +193,10 @@ The agent searches these collections semantically:
 |---|---|---|
 | **Code Specs** | Built-in CLI code specs | `dsagt init` (always set up) |
 | **Skill Corpus** | Installable skills from external repos (one collection per source) | `dsagt init` (chosen sources) + `add_skill_source` |
-| **Knowledge Collections** | NeMo Curator + AIDRIN reference collections; user-ingested docs | `dsagt init` (chosen collections) + agent's `kb_ingest` |
+| **Knowledge Collections** | NeMo Curator reference collection; user-ingested docs | `dsagt init` (chosen collections) + agent's `kb_ingest` |
 | **Explicit Memory** | User-confirmed facts | Agent's `kb_remember` (also written to `<project>/.dsagt/explicit_memories.yaml`); the agent fetches via `kb_get_memories` on demand, not auto-loaded at session start |
 | **Code Execution Records** | `dsagt-run` execution traces | `dsagt-run` writes JSON to `<project>/trace_archive/`; indexed for search during the session, and before `reconstruct_pipeline` |
+| **Readiness Gate** | AIDRIN metrics per stage | **Opt-in** (enabled in the `dsagt init` menu): AIDRIN is installed once and the agent runs a fixed readiness-metric profile before and after every tabular pipeline stage, with reports in `audit/`. |
 | **Episodic Memory** | Captured session turns | **Opt-in** (enabled in the `dsagt init` menu): DSAgt captures each completed turn into `session_memory` during the session (mechanical chunk + embed). Retrieval is recency-weighted. |
 
 The embedding backend is local (sentence-transformers, CPU-side, no API key).
@@ -227,7 +228,7 @@ Each launch gets a session id that every span carries, so you can filter the tra
 <!-- md-shared:cli:start -->
 | Command | Description |
 |---------|-------------|
-| `dsagt init` | Create or reconfigure a project — interactive menu for name, location, agent, knowledge collections, skill sources, and the episodic-memory opt-in; sets up the KB and writes the per-agent MCP config |
+| `dsagt init` | Create or reconfigure a project — interactive menu for name, location, agent, knowledge collections, skill sources, and the episodic-memory and readiness-gate opt-ins; sets up the KB and writes the per-agent MCP config |
 | `dsagt start <name>` | Launch the agent in the project directory (equivalent to `cd <project> && <agent>`) |
 | `dsagt info <name> [--json]` | Resolved config (with source per value) and a session/trace summary |
 | `dsagt traces <name> [--port <n>]` | Open the MLflow trace viewer over the project's store (runs catch-up first, deep-links to the Traces tab, quiets the mlflow noise) |

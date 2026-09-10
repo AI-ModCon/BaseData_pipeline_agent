@@ -95,8 +95,8 @@ def run(project: str, port: int = _DEFAULT_PORT) -> int:
         return subprocess.run(cmd, env=env).returncode
     except FileNotFoundError:
         print(
-            "mlflow not found on PATH.  It ships with dsagt — activate the same "
-            "environment dsagt runs in."
+            "mlflow not found on PATH.  Install `dsagt[traces]` (or `dsagt[all]`) "
+            "in the environment dsagt runs in."
         )
         return 1
     except KeyboardInterrupt:

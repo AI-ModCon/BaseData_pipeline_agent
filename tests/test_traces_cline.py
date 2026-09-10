@@ -9,7 +9,7 @@ import json
 
 import pytest
 
-from dsagt.observability import MLflowSink
+from dsagt.traces import MLflowSink
 from dsagt.traces import ClineReader, ClineTranslator
 
 

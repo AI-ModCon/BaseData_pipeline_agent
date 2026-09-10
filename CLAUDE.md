@@ -20,7 +20,7 @@ The MCP server is self-sufficient: it derives the project from its cwd (`.dsagt/
 ## Commands
 
 ```bash
-uv sync --all-groups                                                  # install
+uv sync --all-groups --all-extras                                     # install
 uv run --no-sync python -m pytest tests/test_<file>.py -q             # targeted tests
 uv run black .                                                         # format
 uv run ruff check .                                                    # lint
@@ -45,13 +45,14 @@ The codebase separates **commands** (entry points with argparse, launched as CLI
 **Modules** (`src/dsagt/`):
 - `session.py` — Project init, agent config generation, env-var resolution, config load/validate, session-id minting (`append_session` / `session_tag`), and startup **catch-up** (`catch_up_extraction`): code-use indexing + a chat-trace re-collect (`_catch_up_traces`) of the *previous* session (pinned to the `trace_source` token in `state.yaml`) so turns lost to an ungraceful shutdown still reach MLflow + episodic memory — uniform across all agents.
 - `agents/` — Per-agent-platform setup (`base.py` ABC + `claude.py` / `goose.py` / `cline.py` / `codex.py` / `opencode.py`). Each subclass owns its `write_static`, `write_dynamic`, `runtime_env`, `vscode_hint`. Shared helpers (`_mcp_env_block`, `_build_mcp_servers_dict`) in `base.py`. DSAGT sets no telemetry/OTel env, writes no launch shim, and never touches provider credentials — agents are expected pre-authenticated (shell env / their own auth flows) before dsagt is pointed at them; dsagt prints no credential hints and never troubleshoots auth.
-- `knowledge.py` — ChromaDB document retrieval, embedding backends, per-collection routing (the reference example of the house style).
-- `registry.py` — `CodeRegistry` (CLI codes) + `SkillRegistry` (agent instruction skills), KB indexing.
+- `knowledge/` — ChromaDB document retrieval, embedding backends, per-collection routing (the reference example of the house style; one module in `__init__.py`).
+- `registry/` — `CodeRegistry` (CLI codes) + `SkillRegistry` (agent instruction skills), KB indexing.
 - `provenance.py` — Code execution records (`run_and_record`), execution-record indexing into ChromaDB (`CodeUseIndexer` → `code_use` collection), pipeline reconstruction (`reconstruct_pipeline`, dependency graph).
-- `observability.py` — first-party span emission over the serverless sqlite store via MLflow's native `mlflow.start_span` (no OTel `TracerProvider`). `resolve_tracking_uri` (never-raise), `init_tracing`, `@traced`/`obs`/`child_span` + typed span helpers. Each internal trace's root is tagged `dsagt.source` with the MCP tool *category* (`memory`/`skill`/`knowledge`/`registry`, or `execution` for dsagt-run) so the MLflow UI can filter the debug view apart from agent traces. `MLflowSink` (a `traces.Trace` consumer) replays finished transcripts via `start_span_no_context`.
-- `memory.py` — Explicit memory (YAML, `ExplicitMemory`) + the episodic `MemoryExtractor` (a `traces.TraceCollector` consumer that mechanically chunks+tags+embeds every turn, no LLM). Turns carry `ts_epoch` for recency-weighted retrieval. `extract_session` is a no-op stub kept only for the deferred cross-session N+1 catch-up call site.
-- `skills.py` — External skill-catalog data plane (`SkillsCatalog`: clone/sync/index/install), the `SkillRouter` render facade, and the Genesis-derived keyword scorer (`rank_skills`).
-- `traces.py` — the whole trace pipeline in one module: the pure-data `Trace` (span dicts + compose/query/`to_exchanges`), the `Reader`/`Translator` ABCs with a per-agent subclass each (Claude bespoke; codex/goose/opencode/cline share the `Translator` turn-template; claude+codex share `JsonlReader`), and `TraceCollector` — the MCP-server heartbeat that reads→translates→hands the `Trace` to its consumers (MLflow logger, memory indexer), each with its own ack set for idempotency. Imports nothing heavy (mlflow is lazy, consumer-side).
+- `observability.py` — the live tracer: first-party span emission over the serverless sqlite store via MLflow's native `mlflow.start_span` (no OTel `TracerProvider`). `resolve_tracking_uri` (never-raise), `init_tracing`, `@traced`/`obs`/`child_span` + typed span helpers. Each internal trace's root is tagged `dsagt.source` with the MCP tool *category* (`memory`/`skill`/`knowledge`/`registry`, or `execution` for dsagt-run) so the MLflow UI can filter the debug view apart from agent traces. (The replay sink is `traces/sink.py`.)
+- `memory/` — Explicit memory (YAML, `ExplicitMemory`) + the episodic `MemoryExtractor` (a `traces.TraceCollector` consumer that mechanically chunks+tags+embeds every turn, no LLM). Turns carry `ts_epoch` for recency-weighted retrieval. `extract_session` is a no-op stub kept only for the deferred cross-session N+1 catch-up call site.
+- `readiness.py` — The opt-in readiness gate (`dsagt init --readiness aidrin`): `ensure_aidrin` (one-time shared venv install under `~/dsagt-projects/.tools/aidrin/`), `PROFILES` (the metric sets the bundled `aidrin` code's `gate` subcommand expands), and `instructions_block` (appended to the agent's instructions file by `static_agent_record`). The bundled code `codes/aidrin/` is copied into a project only when the gate is on (`CodeRegistry._OPTIONAL_CODES`).
+- `skills/` — External skill-catalog data plane (`SkillsCatalog`: clone/sync/index/install), the `SkillRouter` render facade, and the Genesis-derived keyword scorer (`rank_skills`) in `__init__.py`; the built-in skill dirs (e.g. `skill-creator/`) are data inside this package.
+- `traces/` — the trace pipeline, one module per stage: `trace.py` (the pure-data `Trace`: span dicts + compose/query/`to_exchanges`), `readers.py` (the `Reader` ABC with a per-agent subclass each; claude+codex share `JsonlReader`), `translators.py` (the `Translator` turn-template; Claude bespoke), `collector.py` (`TraceCollector` — the MCP-server heartbeat that reads→translates→hands the `Trace` to its consumers, each with its own ack set for idempotency; `ack_dir=` defaults to `.dsagt`), and `sink.py` (`MLflowSink`: `Trace` → backdated spans via `start_span_no_context`; stamps `dsagt.agent` + `dsagt.trace_id`). Imports nothing heavy at module scope (mlflow is lazy, inside the sink's `write`).
 
 **MCP server** (`src/dsagt/mcp/`) — the single merged `dsagt-server`. `server.py` owns `main()`, the shared-KB startup (`_build_kb_from_config`), and the dispatch shell (`build_dispatch_server`). The 20-tool surface is split by concern: `registry_tools.py` (code registry + execution + provenance, 8), `knowledge_tools.py` (KB retrieval, 5), `memory_tools.py` (explicit memory, 2), `skill_tools.py` (skill search/install/sources, 5). Each `*_tools.py` exposes a `_*_tools_and_handlers()` factory (composed by `create_dsagt_server`) plus a `create_*_server` test wrapper.
 
@@ -59,14 +60,16 @@ Entry points (`pyproject.toml` `[project.scripts]`): `dsagt` → `dsagt.commands
 
 **Built-in assets** (declared as `package-data`):
 - `src/dsagt/codes/` — built-in codes as skill-standard dirs (`<name>/SKILL.md`), served from the package (never copied into projects).
-- `src/dsagt/skills/` — built-in skills (e.g., `skill-creator`) the agent discovers via `search_skills`.
+- `src/dsagt/skills/<name>/` — built-in skills (e.g., `skill-creator`) the agent discovers via `search_skills`; data inside the `dsagt.skills` package.
 - `src/dsagt/dsagt_instructions.md` — agent-agnostic system instructions injected into per-agent files at init.
+
+**Packaging extras** (`pyproject.toml`): core dependencies are `pyyaml`/`httpx`/`jsonschema`/`mcp` only; `traces` (mlflow), `kb` (chromadb, sentence-transformers, llama-index, numpy, rank-bm25, …), `cli` (questionary), and `all` are extras, so a downstream project can depend on `dsagt[traces]` or `dsagt[kb]` alone (see `docs/developer.md`, "Using dsagt as a dependency"). Every subpackage must import on a core-only install — the `import-leaf` CI job checks this — so a module-scope import of an extra's dependency is a regression; lazy imports that need a missing extra raise `ImportError` naming it. dsagt itself runs from `dsagt[all]`.
 
 **`use_cases/`** holds end-to-end domain walkthroughs. They are reference material for users, not part of the test suite.
 
 ## Code style & conventions
 
-Distilled from working on this codebase; `knowledge.py` is the reference example of the house style.
+Distilled from working on this codebase; `knowledge/__init__.py` is the reference example of the house style.
 
 **No defensive swallowing.** Don't add guards that silently absorb empty/invalid input (`if not texts: return []`, empty-array short-circuits, disk-state "reconciliation" of can't-happen states). They convert a caller's bug into a silent success you'll never see. Empty/invalid input is out-of-contract — let it surface. Translating a *real, reachable* exception into an actionable message (e.g. a dim-mismatch hint) is different and welcome; swallowing is not.
 
@@ -84,14 +87,14 @@ Distilled from working on this codebase; `knowledge.py` is the reference example
 
 **Naming.** Prefer concise domain names (`APIEmbedder`/`LocalEmbedder`, not `…EmbeddingClient`).
 
-**Module docstrings (major modules).** Open with a title line + 3–5 sentences: what the module does, the capabilities it backs, the design motivations. Follow with an **ASCII-art UML class map** — one consistent notation throughout (`knowledge.py` uses `◇` holds · `◆` owns · `▷` inherits). Treat the class-map diagram as a deliverable of any **major module refactor** — refresh it whenever the class structure changes substantially.
+**Module docstrings (major modules).** Open with a title line + 3–5 sentences: what the module does, the capabilities it backs, the design motivations. Follow with an **ASCII-art UML class map** — one consistent notation throughout (`knowledge/__init__.py` uses `◇` holds · `◆` owns · `▷` inherits). Treat the class-map diagram as a deliverable of any **major module refactor** — refresh it whenever the class structure changes substantially.
 
 **Prose register (docs, comments, changelog, commit messages).** Plain, accurate, direct — no anthropomorphism, no code-jockey slang, no advertising gloss. Concretely: files/modules are *located in* / *defined in* / *stored in*, never "live in"; DSAgt *provides* / *includes* things, it does not "ship" or "provision" them; use *built-in*, not "bundled"; drop marketing gloss ("out of the box", "seamless", "with nothing to remember", "blazing"). State what a thing does, not how nice it is. Changelogs and commit messages record real behavior changes — pure renames and doc-only churn are noise, keep them out. This applies to this file too.
 
 ## BYOA artifacts
 
 `dsagt init --agent X --location <path>` writes, in the project dir:
-- `.dsagt/config.yaml` — internal config (project name, agent, embedding/knowledge/extraction/skills settings). No mlflow port (the store is the serverless `sqlite:///<pdir>/mlflow.db`), no user-facing fields, no credentials. `.dsagt/state.yaml` (session log + memory cursor) and `.dsagt/explicit_memories.yaml` live alongside it, owned by the MCP server.
+- `.dsagt/config.yaml` — internal config (project name, agent, embedding/knowledge/extraction/skills settings; a `readiness` block only when the gate is on). No mlflow port (the store is the serverless `sqlite:///<pdir>/mlflow.db`), no user-facing fields, no credentials. `.dsagt/state.yaml` (session log + memory cursor) and `.dsagt/explicit_memories.yaml` live alongside it, owned by the MCP server.
 - Per-agent instructions file (e.g., `CLAUDE.md`, `.goosehints`, `AGENTS.md`).
 - Per-agent MCP config artifact (`.mcp.json` for claude, `goose.yaml` for goose, `cline_mcp_settings.json` via `cline mcp add`, `.codex-data/config.toml`). The env block carries benign routing only (`DSAGT_PROJECT`, `DSAGT_PROJECT_DIR`, `DSAGT_SESSION_ID`, `MLFLOW_TRACKING_URI`, `EMBEDDING_*`) so MCP-server children of agents that don't inherit shell env (codex/cline) still log to the right store. No credentials, no OTel routing.
 
@@ -103,21 +106,21 @@ No launch shim is written and `dsagt init` prints no env/OTel instructions — t
 
 A single merged `dsagt-server` (`src/dsagt/mcp/`) exposes 20 tools across four concern modules under one `Server` + one shared `KnowledgeBase`:
 
-1. **Registry tools** (`mcp/registry_tools.py` + `registry.py` / `provenance.py`) — tool analysis, registration, dependency installation, command/file/http execution, pipeline reconstruction. Tools are saved as markdown specs with YAML frontmatter.
-2. **Knowledge tools** (`mcp/knowledge_tools.py` + `knowledge.py`) — semantic search over document collections (ChromaDB, optional cross-encoder reranking); long ops run as background jobs.
-3. **Memory tools** (`mcp/memory_tools.py` + `memory.py`) — explicit memory (`kb_remember` / `kb_get_memories`).
-4. **Skill tools** (`mcp/skill_tools.py` + `skills.py`) — skill search/install + external catalog sources.
+1. **Registry tools** (`mcp/registry_tools.py` + `registry/` / `provenance.py`) — tool analysis, registration, dependency installation, command/file/http execution, pipeline reconstruction. Tools are saved as markdown specs with YAML frontmatter.
+2. **Knowledge tools** (`mcp/knowledge_tools.py` + `knowledge/`) — semantic search over document collections (ChromaDB, optional cross-encoder reranking); long ops run as background jobs.
+3. **Memory tools** (`mcp/memory_tools.py` + `memory/`) — explicit memory (`kb_remember` / `kb_get_memories`).
+4. **Skill tools** (`mcp/skill_tools.py` + `skills/`) — skill search/install + external catalog sources.
 
 ### Observability
 
 - **Serverless MLflow store** — spans land in `sqlite:///<pdir>/mlflow.db` (no server). The tracking URI resolves via `observability.resolve_tracking_uri` (never raises).
 - **dsagt-run** (`commands/run_code.py` + `provenance.py`) — wraps code commands; captures the execution layer (command, stdout/stderr, timing, file lists) into `trace_archive/` and emits `code.execute` spans.
 - **MCP-server + tool spans (debug view)** — `dsagt-server` calls `init_tracing()` at startup; the dispatch shell opens one categorization-root span per tool call (subsystem `kb.*`/`registry.*` spans nest under it). Each root is tagged `dsagt.source` with its concern category so it filters apart as a debugging view. Session grouping via `DSAGT_SESSION_ID`.
-- **Agent traces** — recovered post-hoc from the on-disk transcript by the MCP-server heartbeat's trace pipeline (`traces.py`), uniform across all five agents. No native OTel, no autolog.
+- **Agent traces** — recovered post-hoc from the on-disk transcript by the MCP-server heartbeat's trace pipeline (`traces/`), uniform across all five agents. No native OTel, no autolog.
 
 ### Memory System
 
-- **Explicit memory** (`memory.py:ExplicitMemory`) — user-confirmed facts in YAML, loaded into agent context at session start via `kb_remember` / `kb_get_memories` (the vector mirror is optional — degrades to pure-YAML if the store is down).
+- **Explicit memory** (`memory.ExplicitMemory`) — user-confirmed facts in YAML, loaded into agent context at session start via `kb_remember` / `kb_get_memories` (the vector mirror is optional — degrades to pure-YAML if the store is down).
 - **Code-execution indexing** — `provenance.CodeUseIndexer` embeds `trace_archive/` records into the project's `code_use` collection incrementally on the heartbeat (idempotent via a persisted ack set), plus a startup catch-up and an on-demand tick before `reconstruct_pipeline`. No LLM.
 - **Chat-trace catch-up** — the heartbeat logs the live transcript to MLflow (+ episodic memory) and a graceful shutdown flushes the deferred final turn; an ungraceful kill is backstopped at the *next* session's startup by `session._catch_up_traces`, which re-collects the previous session pinned to its recorded `trace_source` token. Idempotency rests on the collector's **session-qualified** ack keys (`<session_id>:<span_id>`).
 - **Episodic memory** — live, **opt-in** (`episodic.enabled`, via `dsagt init --episodic`). The `memory.MemoryExtractor` consumer consumes `Trace.to_exchanges()` on the heartbeat and mechanically chunks+tags+embeds every turn into `session_memory` (no LLM). Retrieval is recency-weighted (`episodic.recency_half_life_days`).

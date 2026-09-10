@@ -22,6 +22,7 @@ The pre-menu flags still work — the automation/CI path — but are **deprecate
 | `--location <path>` | Project location |
 | `--include … \| --exclude …` | Knowledge collections / skill sources |
 | `--episodic` | "Enable episodic memory?" |
+| `--readiness aidrin [--readiness-executable PATH]` | "Enable the AIDRIN readiness gate?" |
 
 New usage should prefer bare `dsagt init` and the menu.
 

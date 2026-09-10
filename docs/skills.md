@@ -10,7 +10,7 @@ Agent installed and DSAgt core Skills are located in `<project>/skills/`. Each i
 
 Skills fall into two sets — the searchable **corpus** and the project's **installed skills** — and a single MCP service, the **SkillRouter**, routes every skill operation between them:
 
-- **Corpus** — skills that exist in external repositories but are *not yet installed*. DSAgt federates many sources (`k-dense-ai`, `anthropic`, `antigravity`, `composio`, `genesis`, or any git URL); each is cloned and indexed into its own collection. The agent browses the corpus with `search_skills` and manages sources with `add_skill_source` / `list_skill_sources`.
+- **Corpus** — skills that exist in external repositories but are *not yet installed*. DSAgt federates many sources (the known names below, or any git URL); each is cloned and indexed into its own collection. The agent browses the corpus with `search_skills` and manages sources with `add_skill_source` / `list_skill_sources`.
 - **Installed skills** — skills drawn into the project's `<project>/skills/` directory, either installed from the corpus (`install_skill`) or authored in place (e.g. with the built-in `skill-creator`). These are mirrored into each agent's *native* skills directory (`.claude/`, `.agents/`, `.cline/`) at install time (and re-mirrored at `dsagt init`/`start`), where the agent auto-discovers and auto-invokes them.
 
 ## Design motivation
@@ -19,6 +19,21 @@ Skills fall into two sets — the searchable **corpus** and the project's **inst
 - **Keyword fallback** When no embedding model is configured, `search_skills` falls back to a keyword match over the local clones.
 
 - **Federated and provenance-preserving.** Each source is an independent per-source collection, so re-syncing one never disturbs another; installing a skill from the corpus preserves its upstream `LICENSE`/`NOTICE` and stamps a `PROVENANCE.txt` into the installed directory.
+
+## Sources
+
+`dsagt init` enables the `genesis` source by default. The others are enabled at init (the interactive checkbox, or `--include <name>`) or during a session with the `add_skill_source` tool, which also accepts any git URL. A source is a git repository holding `SKILL.md` directories; discovery is recursive under the configured subdirectory, so a skill added upstream appears after the source is re-synced: `add_skill_source` with `force: true` re-clones a cached source.
+
+| Name | Repository | Contents |
+|---|---|---|
+| `genesis` (default) | `gitlab.osti.gov/genesis/genesis-skills`, `skills/` | HPC job and site skills (`slurm`, `pbs`, `perlmutter`, `aurora`, `frontier`); ModCon data skills (`datacard-generator`, `croissant-validator`, `hdmf-schema-builder`); plasma simulation (`gkeyll`, `gs2`); vendor skill sets from Anthropic, OpenAI, HuggingFace, LangChain, and superpowers; `academy`, `literature-search`. 70+ skills. |
+| `aidrin` | `github.com/idtlab/AIDRIN`, `.claude/skills/` (branch `develop`) | The `aidrin` skill: AI-readiness metrics (quality, fairness, privacy, completeness, duplicates, outliers) over CSV, Excel, JSON, HDF5, and Parquet. Running it requires the AIDRIN package; the skill's `reference/installation.md` covers setup. |
+| `k-dense-ai` | `github.com/K-Dense-AI/scientific-agent-skills` | 140+ chemistry, biology, medicine, and materials skills. |
+| `anthropic` | `github.com/anthropics/skills`, `skills/` | Anthropic document-editing and design skills. |
+| `antigravity` | `github.com/sickn33/antigravity-awesome-skills` | 1,500+ cross-platform agent skills. |
+| `composio` | `github.com/ComposioHQ/awesome-claude-skills` | Workflow skills for SaaS applications. |
+
+The `genesis` source is the ModCon aggregation point: skills contributed by other ModCon and AmSC teams (Globus Compute, IRI API, data movement) land there and become searchable on the next sync.
 
 ## Built-in and authored skills
 

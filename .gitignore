@@ -115,7 +115,6 @@ design-notes/
 scratch/
 env_examples/
 notes.txt
-uv.lock
 
 # Demo outputs
 demo/output/
@@ -135,9 +134,6 @@ dmypy.json
 docs/_build/
 docs/_static/
 docs/_templates/
-
-# UV lock file
-uv.lock
 
 # Claude Code
 .claude/

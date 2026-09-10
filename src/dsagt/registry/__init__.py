@@ -312,7 +312,12 @@ class CodeRegistry:
     never clobbered.  KB-side search via ``search_registry``.
     """
 
-    _PACKAGE_CODES_DIR = Path(__file__).parent / "codes"
+    # ``__file__`` is ``registry/__init__.py``; the built-in codes are data of
+    # the ``dsagt`` package root.
+    _PACKAGE_CODES_DIR = Path(__file__).resolve().parent.parent / "codes"
+    #: Bundled codes copied only when the project opted into the feature
+    #: they serve (``aidrin`` needs the readiness gate's AIDRIN install).
+    _OPTIONAL_CODES = frozenset({"aidrin"})
 
     def __init__(
         self,
@@ -328,19 +333,25 @@ class CodeRegistry:
         # no shared scripts/ dir to pre-create.
         self.codes_dir.mkdir(parents=True, exist_ok=True)
 
-    def ensure_bundled_copies(self) -> list[str]:
+    def ensure_bundled_copies(
+        self, optional: frozenset[str] = frozenset()
+    ) -> list[str]:
         """Copy package-bundled code dirs into ``<project>/codes/``.
 
         Called at ``dsagt init``.  A dir whose name already exists in the
         project is left untouched — user edits and agent overrides win;
         delete the dir and re-init to restore the packaged version.
-        Returns one action line per copy made.
+        Codes in :attr:`_OPTIONAL_CODES` are copied only when named in
+        *optional*.  Returns one action line per copy made.
         """
         actions: list[str] = []
         if not self._PACKAGE_CODES_DIR.exists():
             return actions
         for spec in sorted(self._PACKAGE_CODES_DIR.glob("*/SKILL.md")):
-            dest = self.codes_dir / spec.parent.name
+            name = spec.parent.name
+            if name in self._OPTIONAL_CODES and name not in optional:
+                continue
+            dest = self.codes_dir / name
             if dest.exists():
                 continue
             shutil.copytree(spec.parent, dest)
@@ -498,7 +509,8 @@ class SkillRegistry:
     collision so a project can override a bundled skill.
     """
 
-    _PACKAGE_SKILLS_DIR = Path(__file__).parent / "skills"
+    # The built-in skill dirs are data inside the ``dsagt.skills`` package.
+    _PACKAGE_SKILLS_DIR = Path(__file__).resolve().parent.parent / "skills"
 
     def __init__(
         self,

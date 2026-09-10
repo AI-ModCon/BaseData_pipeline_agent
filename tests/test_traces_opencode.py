@@ -5,7 +5,7 @@ import sqlite3
 
 import pytest
 
-from dsagt.observability import MLflowSink
+from dsagt.traces import MLflowSink
 from dsagt.traces import OpenCodeReader, OpenCodeTranslator
 
 

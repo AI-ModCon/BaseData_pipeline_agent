@@ -409,7 +409,10 @@ def _load_traces(mlflow_db: Path, project_name: str):
     can decide what to print when the experiment doesn't exist yet (new
     project, never run).
     """
-    import mlflow
+    try:
+        import mlflow
+    except ImportError as e:
+        raise ImportError("trace triage needs `dsagt[traces]`") from e
 
     mlflow.set_tracking_uri(f"sqlite:///{mlflow_db}")
     exp = mlflow.get_experiment_by_name(project_name)

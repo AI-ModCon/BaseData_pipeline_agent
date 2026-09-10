@@ -32,11 +32,11 @@ DSAgt connects an MCP-compatible AI coding agent to code registration, a semanti
 
 ### For development
 
-Clone the repo and use `uv` (editable install; add `--all-groups` for the test suite):
+Clone the repo and use `uv` (editable install; add `--all-groups --all-extras` for the test suite):
 
 ```bash
 git clone https://github.com/AI-ModCon/dsagt.git
-cd dsagt && uv sync --all-groups
+cd dsagt && uv sync --all-groups --all-extras
 source .venv/bin/activate
 ```
 
