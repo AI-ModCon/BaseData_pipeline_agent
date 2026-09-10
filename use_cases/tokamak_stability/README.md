@@ -43,9 +43,9 @@ Sanchez-Villar (PPPL). The session below has been tested with Claude Code.
   bash use_cases/tokamak_stability/scripts/setup_env.sh
   ```
 
-  The build needs git, cmake, C/C++/Fortran compilers, MPI, HDF5, and LAPACK
-  already installed (macOS: `brew install cmake gcc open-mpi hdf5`; Debian:
-  `apt install cmake gfortran libopenmpi-dev libhdf5-dev liblapack-dev`); the
+  The build needs git, cmake, pkg-config, C/C++/Fortran compilers, MPI, HDF5, and
+  LAPACK already installed (macOS: `brew install cmake pkgconf gcc open-mpi hdf5`;
+  Debian: `apt install cmake pkg-config gfortran libopenmpi-dev libhdf5-dev liblapack-dev`); the
   script names whatever is missing and stops. It installs under
   `~/dsagt-projects/.tools/tokamak_stability/fusion-io/` and prints the
   `FIO_INSTALL_DIR`, `PATH`, `PYTHONPATH`, and library-path exports to add to
