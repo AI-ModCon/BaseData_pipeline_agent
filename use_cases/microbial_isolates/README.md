@@ -17,7 +17,7 @@ order: 10
 > a bring-your-own-HPC-data walkthrough; substitute your own FASTQ files for the
 > NERSC path if you don't have NERSC access.
 
-This guide documents a reproducible DSAgt demonstration for microbial isolate data processing using `fastp` and `megahit`.
+This guide documents a reproducible DSAgt demonstration for microbial isolate data processing using `fastp` and `megahit`. The walkthrough has been run end to end with Claude Code on Sonnet 4.5.
 
 ## Prerequisites
 
@@ -116,7 +116,9 @@ We can process them one at a time.
 ### 4. Generate datacard
 
 ```text
-Search for a skill that can generate a datacard for our processed data, then use it.
+Search for a skill that can generate a datacard for our processed data, then use it to write a
+Level 1 datacard. Take the values from the data and the reports, and note anything unknown rather
+than asking.
 ```
 
 The agent should find the `datacard-generator` skill in the `genesis` catalog via `search_skills` and install it with `install_skill` (only `skill-creator` is built in; domain skills come from catalogs).

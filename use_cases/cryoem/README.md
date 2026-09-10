@@ -20,7 +20,7 @@ order: 20
 > embedder) before any pipeline work. The one-time AIDRIN install at
 > `dsagt init` adds a few minutes on first use.
 
-This guide documents a comprehensive DSAgt demonstration using cryo-electron microscopy (cryo-EM) data. It exercises knowledge ingestion, KB-guided pipeline design, code registration from third-party scripts, multi-stage pipeline execution with domain-specific evaluation, and the [readiness gate](../../docs/readiness.md): with the gate enabled at init, the agent runs AIDRIN readiness metrics before and after the tabular curation step on its own, so the pipeline's AI-readiness gain is *measured*.
+This guide documents a comprehensive DSAgt demonstration using cryo-electron microscopy (cryo-EM) data. It exercises knowledge ingestion, KB-guided pipeline design, code registration from third-party scripts, multi-stage pipeline execution with domain-specific evaluation, and the [readiness gate](../../docs/readiness.md): with the gate enabled at init, the agent runs AIDRIN readiness metrics before and after the tabular curation step on its own, so the pipeline's AI-readiness gain is *measured*. The walkthrough has been run end to end with Claude Code on Sonnet 4.5.
 
 ## Prerequisites
 
