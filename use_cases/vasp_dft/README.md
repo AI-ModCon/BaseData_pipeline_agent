@@ -51,13 +51,13 @@ Folder contents:
   **already authenticated** (BYOA — dsagt writes no credentials; the default
   local embedder needs no API key).
 - `pymatgen` importable in the environment `dsagt` runs in
-  (`uv pip install pymatgen`) — both converters use `pymatgen.io.vasp`.
+  (`uv sync --all-groups` installs it through the `use-cases` dependency group)
+  — both converters use `pymatgen.io.vasp`.
 - Git, for the catalog clone.
 
 ## Setup
 
 ```bash
-uv pip install pymatgen                 # the converters' one real dependency
 dsagt init
 ```
 

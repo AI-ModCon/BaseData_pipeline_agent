@@ -14,6 +14,14 @@ holds documents the agent reads; `scripts/` holds code copied into the project;
 and reference solutions that are not inputs to the demo. Only the folders a use case
 needs are present.
 
+Dependencies follow one rule per kind. Python packages from PyPI that a walkthrough
+needs are in the `use-cases` dependency group in `pyproject.toml`, so
+`uv sync --all-groups` installs them. Anything else (conda-only tools, libraries built
+from source) is installed by the use case's `scripts/setup_env.sh` into
+`~/dsagt-projects/.tools/<use-case>/`, the same shared tools directory the readiness
+gate uses; the README's Prerequisites list what the script installs and what it needs
+already present. Data comes from the Google Drive folder linked above.
+
 !!! note "Adding a use case"
     Drop a `README.md` with frontmatter (`title`, `domain`, `summary`) into a
     `use_cases/<name>/` folder — it is auto-added to this table, its body is

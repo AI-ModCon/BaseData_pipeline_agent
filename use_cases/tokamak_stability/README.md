@@ -13,7 +13,8 @@ order: 40
 # DSAgt Demo: Tokamak Stability
 
 > **Estimated time:** involved / not a 10-minute demo. Setup is the cost:
-> building the **fusion-io** C/C++ library from source. Budget roughly an hour
+> building the **fusion-io** C/C++ library from source (scripted, but its
+> compilers and libraries must be installed first). Budget roughly an hour
 > for first-time setup; the agent session itself is ~15 minutes once the
 > dependencies and data are in place.
 
@@ -35,14 +36,20 @@ Sanchez-Villar (PPPL). The session below has been tested with Claude Code.
 
 - DSAgt installed (`uv sync --all-groups`) and an agent platform installed and
   **already authenticated** (BYOA — dsagt writes no credentials).
-- The [fusion-io](https://github.com/nferraro/fusion-io) library built from
-  source (the top commit of `main` works) and its Python bindings on your path:
+- The [fusion-io](https://github.com/nferraro/fusion-io) library and its Python
+  bindings, built from source by [`scripts/setup_env.sh`](scripts/setup_env.sh):
 
   ```bash
-  export FIO_INSTALL_DIR=/path/to/your/fusion-io/install/
-  export PYTHONPATH=$FIO_INSTALL_DIR/lib:$PYTHONPATH
-  export DYLD_LIBRARY_PATH=$FIO_INSTALL_DIR/lib:$DYLD_LIBRARY_PATH   # LD_LIBRARY_PATH on Linux
+  bash use_cases/tokamak_stability/scripts/setup_env.sh
   ```
+
+  The build needs git, cmake, C/C++/Fortran compilers, MPI, HDF5, and LAPACK
+  already installed (macOS: `brew install cmake gcc open-mpi hdf5`; Debian:
+  `apt install cmake gfortran libopenmpi-dev libhdf5-dev liblapack-dev`); the
+  script names whatever is missing and stops. It installs under
+  `~/dsagt-projects/.tools/tokamak_stability/fusion-io/` and prints the
+  `FIO_INSTALL_DIR`, `PATH`, `PYTHONPATH`, and library-path exports to add to
+  your shell before starting the session.
 
 - `h5py`, `numpy`, and `matplotlib` importable in the environment `dsagt` runs in.
 
@@ -194,4 +201,5 @@ startup files.
 ```bash
 dsagt rm tokamak-stability -y
 rm tokamak_stability.tar.gz
+rm -rf ~/dsagt-projects/.tools/tokamak_stability      # the fusion-io build
 ```
