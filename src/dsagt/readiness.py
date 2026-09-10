@@ -140,7 +140,8 @@ AIDRIN is enabled as the readiness check for this project. It replaces the
 generic `check_[X]` in the per-operation check rule for every stage whose
 input or output is a tabular file (CSV, Excel, JSON, HDF5, Parquet, npz).
 
-1. Before and after each data operation on a tabular file, run the registered
+1. Before and after each data operation on a tabular file — including a merge,
+   filter, or conversion you implement yourself — run the registered
    `aidrin` code's `gate` subcommand on that file with the project profile
    (`{profile}`: {metrics}). Write the report to
    `audit/step_N_pre.aidrin.json` / `audit/step_N_post.aidrin.json`.
