@@ -1,122 +1,190 @@
 ---
 title: Tokamak Stability
-domain: Fusion energy - explore finite-element simulation data
+domain: Fusion energy — M3D-C1 finite-element simulation data
 summary: >-
-  Register tools for reading, analyzing, and visualizing data from the
-  M3D-C1 finite-element code. Use DSAgt to explore an example dataset, 
-  produce a range of plots, and generate and repackage secondary data products.
-  Save the pipeline as a script that can be rerun across other similar datasets.
+  Register codes for reading, analyzing, and visualizing data from the M3D-C1
+  finite-element code, then use DSAgt to explore an example linear-MHD dataset,
+  produce plots and spectra, repackage secondary data products as HDF5, and
+  reconstruct the session as a script that reruns on other datasets.
+status: published
+order: 40
 ---
 
-
-# Tokamak Stability - a fusion energy use case
+# DSAgt Demo: Tokamak Stability
 
 > **Estimated time:** involved / not a 10-minute demo. Setup is the cost:
-> building the **fusion-io** C/C++ library from source. Additionally, an **M3D-C1** 
-> dataset is packaged with this use case's necessary text/source files on OSF.io. 
-> Budget roughly an hour for first-time setup; the agent session itself is ~15 minutes once 
+> building the **fusion-io** C/C++ library from source. Budget roughly an hour
+> for first-time setup; the agent session itself is ~15 minutes once the
 > dependencies and data are in place.
 
-Here we're going to use dsagt to investigate the stability properties of a tokamak configuration. We'll be looking at linear MHD simulation data produced by the [M3D-C1](https://sites.google.com/pppl.gov/m3d-c1) unstructured-mesh finite-element code. The session below has been tested with Claude Code.
+This guide uses DSAgt to investigate the stability properties of a tokamak
+configuration from linear MHD simulation output produced by the
+[M3D-C1](https://sites.google.com/pppl.gov/m3d-c1) unstructured-mesh
+finite-element code. The Python modules in this folder — `hdf5.py`,
+`m3dc1_tools.py`, `m3dc1_plots.py`, and the `m3dc1/` wrapper package — provide
+the functions for reading M3D-C1 HDF5 output, evaluating fields from their
+basis-function coefficients, computing equilibrium and spectral quantities, and
+plotting. The agent registers those functions as codes under the guidance of
+the [`m3dc1-skill`](skills/m3dc1-skill/SKILL.md), which documents the APIs and
+the conventions the codes must follow.
 
+The example dataset, a single M3D-C1 simulation output, is courtesy of Alvaro
+Sanchez-Villar (PPPL). The session below has been tested with Claude Code.
 
-## Example data
+## Prerequisites
 
-A demonstration dataset, consisting of a single M3D-C1 simulation output, 
-is available in [this OSF.io directory](https://osf.io/gak3v/files/) as
-`tokamak_stability.tar.gz`; an account is not needed for access. 
-The tarball also includes all necessary source files, so you can 
-run this use case using a pip-installed dsagt without cloning the repository.
-The dataset is courtesy of Alvaro Sanchez-Villar (asvillar@pppl.gov). 
+- DSAgt installed (`uv sync --all-groups`) and an agent platform installed and
+  **already authenticated** (BYOA — dsagt writes no credentials).
+- The [fusion-io](https://github.com/nferraro/fusion-io) library built from
+  source (the top commit of `main` works) and its Python bindings on your path:
 
-Untar the .tar.gz file somewhere convenient; it will create a `tokamak_stability/`
-directory.
+  ```bash
+  export FIO_INSTALL_DIR=/path/to/your/fusion-io/install/
+  export PYTHONPATH=$FIO_INSTALL_DIR/lib:$PYTHONPATH
+  export DYLD_LIBRARY_PATH=$FIO_INSTALL_DIR/lib:$DYLD_LIBRARY_PATH   # LD_LIBRARY_PATH on Linux
+  ```
 
+- `h5py`, `numpy`, and `matplotlib` importable in the environment `dsagt` runs in.
 
-## Dependencies
+## Setup
 
-In addition to a standard dsagt installation you'll also need to build and install the fusion-io library from [https://github.com/nferraro/fusion-io](https://github.com/nferraro/fusion-io). The top commit of the main branch will work. Use these environment variables to point to the fusion-io installation:
-
-```
-export FIO_INSTALL_DIR=/path/to/your/fusion-io/install/
-export PYTHONPATH=$FIO_INSTALL_DIR/lib:$PYTHONPATH
-export DYLD_LIBRARY_PATH=$FIO_INSTALL_DIR/lib:$DYLD_LIBRARY_PATH
-```
-
-This use case also comes with a wrapper python module called `m3dc1`, which you may want to add to your PYTHONPATH:
-
-```
-export PYTHONPATH=/path/to/your/tokamak_stability:$PYTHONPATH
-```
-
-
-## Getting started
-
-Install dsagt with pip:
-
-```
-python3 -m venv <chosen-venv-directory>
-source <chosen-venv-directory>/bin/activate
-pip install "git+https://github.com/AI-ModCon/dsagt.git"
+```bash
+dsagt init
 ```
 
-Now create a new dsagt project and associated project directory: 
+At the menu, name the project `tokamak-stability` and pick your agent; the
+defaults are fine for the rest. Then:
 
-```
-dsagt init 
-```
-
-Project directories are placed in `$HOME/dsagt-projects/` by default. If you prefer a different location either give a directory name (in which case the project directory is placed in the current directory or in an appropriate subdirectory) or a full absolute path; do not use `~` or `$HOME` as they will be interpreted literally. Select your agent of choice.
-
-Every tool execution and agent turn is logged automatically to an SQLite MLflow store `mlflow.db`
-in the project directory. We'll use this to reconstruct the session later. 
-
-Now start the agent and dsagt's MCP server:
-
-```
-dsagt start <chosen-project-name>
-```
-
-Note that here we use the project name and not the name of the project directory, which you choose separately. 
-
-
-## An example session
-
-Inside the agent, enter these prompts one at a time, replacing the placeholder directory paths with the corresponding paths on your system:
-
--   Read the `AGENTS.md` file in the `/path/to/your/tokamak_stability` directory. This directory contains three python files with functions for dealing with HDF5 datasets produced by the M3D-C1 code: `hdf5.py`, `m3dc1_tools.py`, and `m3dc1_plots.py`. Register these functions as tools and print a summary here. 
-
-Creating and registering the tools may take several minutes.
-
--   Using your tools, tell me about the data in the `/path/to/your/tokamak_stability/m3dc1_data/` directory.
-
--   What are the Miller parameters for this configuration?
-
--   What's the safety factor?
-
--   Make plots of the t=1 fields of the electron temperature, all components of the current density, and the perturbations of the density and magnetic flux.
-
-Plots will go in a `plots/` subdirectory of your project directory by default. Instruct the agent if you prefer an alternative location.
-
--   Create plots of the standard poloidal spectra and the kinetic energy trace. 
-
--   Save the poloidal spectral data for the pressure field in an HDF5 file `pressure_spectrum.h5`.
-
-New data products will go to a `processed_data/` subdirectory of your project directory by default.
-
--   Extract the electron temperature and electron density data at t=1 and place them in an HDF5 file `electrons.h5`.
-
--   Using the MLflow traces in the `mlflow.db` store, create a shell script that recreates this session's tool executions on a general data directory that is set at the top of the script. Save as `dsagt_session_script.sh`.
-
-(You can browse those traces any time by running `mlflow ui --backend-store-uri sqlite:///mlflow.db` from the project directory.)
-
-Now exit the agent session as usual (e.g. with the `exit` command).
-
-The project name is registered in `~/dsagt-projects/projects.yaml` (default location). You can unregister the project name with
-
-```
-dsagt rm <chosen-project-name>
+```bash
+PROJ=~/dsagt-projects/tokamak-stability
+# Demo data (the M3D-C1 simulation output plus this folder's source files) from
+# the DSAgt use-case data folder:
+# https://drive.google.com/drive/folders/1RWQAJeHaikIaD7CCf8ciJ71m55S1erp6
+curl -L "https://drive.usercontent.google.com/download?id=1qo-ZG_GoGlZ_X2BjR1fE8zZW3s9K6mTu&export=download&confirm=t" \
+  -o tokamak_stability.tar.gz
+tar xzf tokamak_stability.tar.gz -C "$PROJ"   # creates $PROJ/tokamak_stability/{m3dc1_data/, *.py, m3dc1/, skills/}
+export PYTHONPATH=$PROJ/tokamak_stability:$PYTHONPATH   # the m3dc1 wrapper package
+mkdir -p "$PROJ/skills"
+cp -r "$PROJ/tokamak_stability/skills/m3dc1-skill" "$PROJ/skills/"
+dsagt start tokamak-stability                  # mirrors the skill into the agent's native skills dir
 ```
 
-You will be asked whether you want to delete the project directory.
+The same tarball is also available from [OSF](https://osf.io/gak3v/files/).
 
+## Execution
+
+Paste these prompts one at a time. Plots go to `plots/` and new data products
+to `processed_data/` under the project directory by default; the skill tells the
+agent so, and you can redirect either in a prompt.
+
+### 1. Register the M3D-C1 functions as codes
+
+```text
+Read the AGENTS.md file in tokamak_stability/. That directory contains three
+Python modules with functions for M3D-C1 HDF5 datasets: hdf5.py,
+m3dc1_tools.py, and m3dc1_plots.py. Following the m3dc1-skill, register these
+functions as codes and print a summary here.
+```
+
+Creating and registering the codes may take several minutes. **Verify:**
+`Search the registry for M3D-C1 codes.` The skill requires that codes wrapping
+functions that call into fusion-io write their JSON result to an
+`--output-json` file rather than stdout; check one such spec (for example the
+Miller-geometry code) carries that option.
+
+### 2. Explore the dataset
+
+```text
+Using your codes, tell me about the data in tokamak_stability/m3dc1_data/.
+```
+
+**Expect:** case metadata, the available time snapshots, and the scalar traces,
+read through the registered codes (with `dsagt-run` records in `trace_archive/`).
+
+### 3. Equilibrium quantities
+
+```text
+What are the Miller parameters for this configuration?
+```
+
+```text
+What's the safety factor?
+```
+
+**Expect:** the agent runs the Miller-geometry and q-profile codes and reports
+the parameters and q95.
+
+### 4. Field plots
+
+```text
+Make plots of the t=1 fields of the electron temperature, all components of the
+current density, and the perturbations of the density and magnetic flux.
+```
+
+**Expect:** PNG files under `plots/`, produced by evaluating the fields on a
+grid rather than plotting raw coefficients (the skill says which the user means).
+
+### 5. Spectra and energy trace
+
+```text
+Create plots of the standard poloidal spectra and the kinetic energy trace.
+```
+
+### 6. Repackage secondary data products
+
+```text
+Save the poloidal spectral data for the pressure field in an HDF5 file
+pressure_spectrum.h5.
+```
+
+```text
+Extract the electron temperature and electron density data at t=1 and place
+them in an HDF5 file electrons.h5.
+```
+
+**Expect:** both files under `processed_data/`, written by the HDF5 repackaging
+code, with the evaluated field values rather than basis coefficients.
+
+### 7. Reconstruct the session as a rerunnable script
+
+```text
+Reconstruct the pipeline from the execution records as a bash script, with the
+data directory set as a variable at the top so it can be rerun on other M3D-C1
+datasets. Save it as dsagt_session_script.sh.
+```
+
+**Expect:** `reconstruct_pipeline` renders the `trace_archive/` records in
+dependency order. The skill asks the agent to check your default shell first,
+since the fusion-io environment variables may be set only in that shell's
+startup files.
+
+## Post-Conditions
+
+1. Code registry contains specs for the M3D-C1 reading, analysis, plotting, and
+   HDF5 repackaging functions; those wrapping fusion-io calls take `--output-json`.
+2. `plots/` holds the field, spectrum, and energy-trace plots.
+3. `processed_data/` holds `pressure_spectrum.h5` and `electrons.h5`.
+4. `trace_archive/` holds one execution record per code run, and no stray
+   temporary JSON files remain in the project.
+5. `dsagt_session_script.sh` reruns the session against a data directory set at
+   the top of the script.
+6. MLflow traces (in the serverless `mlflow.db` store) capture every code
+   execution and agent turn — `mlflow ui --backend-store-uri sqlite:///$PROJ/mlflow.db`.
+
+## What This Tests
+
+| DSAgt Capability | Steps |
+|------------------|-------|
+| Skill-guided code creation from Python modules | 1 |
+| Registry search | 1 |
+| Code execution with provenance through `dsagt-run` | 2–6 |
+| Handling codes whose stdout is unusable (file-based JSON results) | 1, 3 |
+| Plot and data-product generation into project subdirectories | 4–6 |
+| Pipeline reconstruction with a parameterized input | 7 |
+
+## Cleanup
+
+```bash
+dsagt rm tokamak-stability -y
+rm tokamak_stability.tar.gz
+```
