@@ -74,29 +74,3 @@ Four script versions were developed iteratively. See [development_summary_report
 | [conversion_comparison_report.md](conversion_comparison_report.md) | v1 vs holdout for `lifted_hydrogen_jet` |
 | [channelflow_conversion_report.md](channelflow_conversion_report.md) | v3 vs holdout for `nonreacting_channel_flow` |
 | [compare_holdout_conversion.md](compare_holdout_conversion.md) | v4 vs holdout `convert_to_well_format.py` (original script from COMB-FLOW team) |
-
-## MLflow traces
-
-[MLflow](https://mlflow.org/docs/latest/index.html) is an open-source platform for tracking experiments and agent traces. Agent reasoning traces from the development session are stored in [`mlruns/`](mlruns/).
-
-> **Note:** `mlruns/0/meta.yaml` has `artifact_location` pointing to a `pscratch` path from the original machine. Always use `--backend-store-uri` to load traces locally.
-
-### Launch the UI
-
-```bash
-# Install mlflow if you don't have it
-pip install mlflow
-
-# Run mlflow viewer
-mlflow ui --backend-store-uri ./mlruns --port 5000
-```
-
-Then open http://localhost:5000.
-
-> **Known limitation:** The Trace Metrics dashboard and Datasets tab require a SQL backend and will show 500 errors with the file store. Individual traces are fully browsable. To silence the errors and enable those features, migrate to SQLite: `mlflow ui --backend-store-uri sqlite:///mlflow.db --port 5000` (requires [importing existing runs](https://mlflow.org/docs/latest/self-hosting/migrate-from-file-store) first).
-
-### Navigate to traces
-
-1. Select the **Default** experiment in the left sidebar.
-2. Click the **Traces** tab (next to Runs).
-3. Click any trace row to expand the agent reasoning steps, tool calls, and LLM inputs/outputs.

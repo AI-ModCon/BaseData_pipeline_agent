@@ -82,7 +82,7 @@ Platform-Specific Notes
 
 -   NextSeq / NovaSeq data: fastp automatically detects and trims polyG
     tails, which are a known artifact of the two-color signal system
-    used by these instruments. No extra flag needed.
+    used by these instruments.
 
 -   TruSeq libraries: If adapter auto-detection is unreliable, supply
     adapters explicitly with \--adapter_sequence
