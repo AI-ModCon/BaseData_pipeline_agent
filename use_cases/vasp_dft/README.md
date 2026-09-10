@@ -172,11 +172,11 @@ neb_dir and the --output option; run it with --help first.
 **Verify:** `Search the registry for the vasp-neb-to-isaac code.` →
 `$PROJ/codes/vasp-neb-to-isaac/SKILL.md` should exist.
 
-### 8. Run the conversion through dsagt-run and check it
+### 8. Run the conversion and check it
 
 ```text
-Using the registered vasp-neb-to-isaac code and the exact dsagt-run command
-from its spec, convert data/neb/ and write the record to data/neb_record.json.
+Using the registered vasp-neb-to-isaac code, convert data/neb/ and write the
+record to data/neb_record.json.
 Compare it against data/isaac_neb_record.json: report differences in structure
 and in the computation and measurement blocks, fix the converter, and rerun
 through the code until they agree on the method, image count, reaction, and

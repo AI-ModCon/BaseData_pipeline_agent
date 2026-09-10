@@ -518,7 +518,12 @@ def _registry_tools_and_handlers(
         ),
         types.Tool(
             name="reconstruct_pipeline",
-            description="Reconstruct a reproducible pipeline script from tool execution records.",
+            description=(
+                "Reconstruct a reproducible pipeline script from the execution "
+                "records in trace_archive/. The script calls each recorded tool "
+                "directly, without the dsagt-run wrapper, so it runs outside a "
+                "DSAgt project; present it to the user as returned."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {

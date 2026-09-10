@@ -15,7 +15,7 @@ All data operations must be performed by calling registered codes. The point is 
 **Whenever the user says "what do you remember", "recall", or asks you to retrieve a previously-stored fact, you MUST call `kb_get_memories()` first** and answer based on its result, not from in-context message history.
 
 ### 1b. Registered-Code Invocation: Use the `executable` String Verbatim
-**When invoking a registered code, copy the spec's `executable` field byte-for-byte, including any `dsagt-run --code <name> --` prefix.** The prefix is the wrapper that writes the execution record to `trace_archive/`; bypassing it (e.g. running the bare script directly when the spec says `dsagt-run --code scan-directory -- python codes/scan-directory/scripts/scan_directory.py`) loses provenance and breaks pipeline reconstruction. If `dsagt-run` errors with "command not found", surface the error rather than working around it.
+**When invoking a registered code, copy the spec's `executable` field byte-for-byte, including any `dsagt-run --code <name> --` prefix.** The prefix is the wrapper that writes the execution record to `trace_archive/`; bypassing it (e.g. running the bare script directly when the spec says `dsagt-run --code scan-directory -- python codes/scan-directory/scripts/scan_directory.py`) loses provenance and breaks pipeline reconstruction. If `dsagt-run` errors with "command not found", surface the error rather than working around it. This applies equally to scripts you wrote yourself, including a skill's `scripts/`: once registered, run them through the spec's command, never by path.
 
 ### 2. Code and Skill Discovery
 
@@ -164,6 +164,8 @@ Write each code's script to `codes/<name>/scripts/` and register it via `save_co
 At any point, you can reconstruct the pipeline from execution records:
 - `reconstruct_pipeline(format="bash")` — bash script
 - `reconstruct_pipeline(format="snakemake")` — Snakemake workflow
+
+The script the tool returns calls each recorded tool directly, without the `dsagt-run` wrapper, so it runs outside a DSAgt project. Save it as returned. Parameterize or trim it only when the user asks; never add the wrapper or configuration scaffolding of your own.
 
 ## PRINCIPLES
 
