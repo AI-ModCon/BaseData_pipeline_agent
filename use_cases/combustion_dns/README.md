@@ -18,8 +18,8 @@ order: 90
 > node; this demo uses one small lifted-hydrogen-jet trajectory.
 
 [BlastNet](https://blastnet.github.io/) publishes combustion DNS datasets as
-per-trajectory directories of raw float32 arrays plus an `info.json`. The
-COMB-FLOW-UNI project consumes them in the [WELL](https://polymathic-ai.org/the_well/)
+per-trajectory directories of raw float32 arrays plus an `info.json`.
+Machine-learning pipelines consume them in the [WELL](https://polymathic-ai.org/the_well/)
 HDF5 layout. This use case is the converter that bridges the two, and the DSAgt
 session that exercises it.
 
@@ -55,15 +55,15 @@ PROJ=~/dsagt-projects/blastnet-well
 # the DSAgt use-case data folder:
 # https://drive.google.com/drive/folders/1RWQAJeHaikIaD7CCf8ciJ71m55S1erp6
 curl -L "https://drive.usercontent.google.com/download?id=1xUZhlr6uCahSbOLiLt5wcwMzehdpaUjL&export=download&confirm=t" \
-  -o comb_flow_uni_data.tar.gz
-tar xzf comb_flow_uni_data.tar.gz -C "$PROJ"
+  -o combustion_dns_data.tar.gz
+tar xzf combustion_dns_data.tar.gz -C "$PROJ"
 # creates $PROJ/data/blastnet_data/lifted_hydrogen_jet/hydrogen-jet-5000/
 #     and $PROJ/data/holdout/well_output/lifted_hydrogen_jet_traj_5000.hdf5
 mkdir -p "$PROJ/codes/scripts" "$PROJ/docs"
-cp use_cases/comb-flow-uni/blastnet_minimal_input/convert_to_well_format_v4.py \
-   use_cases/comb-flow-uni/blastnet_minimal_input/check_well_output.py "$PROJ/codes/scripts/"
-cp use_cases/comb-flow-uni/blastnet_minimal_input/well_format.md \
-   use_cases/comb-flow-uni/blastnet_minimal_input/README-blastnet.md "$PROJ/docs/"
+cp use_cases/combustion_dns/blastnet_minimal_input/convert_to_well_format_v4.py \
+   use_cases/combustion_dns/blastnet_minimal_input/check_well_output.py "$PROJ/codes/scripts/"
+cp use_cases/combustion_dns/blastnet_minimal_input/well_format.md \
+   use_cases/combustion_dns/blastnet_minimal_input/README-blastnet.md "$PROJ/docs/"
 dsagt start blastnet-well
 ```
 
@@ -181,19 +181,19 @@ can be rerun on the other BlastNet trajectories.
 
 ```bash
 dsagt rm blastnet-well -y
-rm comb_flow_uni_data.tar.gz
+rm combustion_dns_data.tar.gz
 ```
 
 ## Notes
 
 - The demo bundle is the first snapshots of the `hydrogen-jet-5000` trajectory
-  (a full trajectory is ~32 GB) with the COMB-FLOW-UNI reference WELL file sliced
+  (a full trajectory is ~32 GB) with the reference WELL file sliced
   to the same steps. It is built from the full data with
   [`make_demo_subset.py`](blastnet_minimal_input/make_demo_subset.py):
 
   ```bash
   python3 make_demo_subset.py <traj_dir> <reference.hdf5> <out_dir> --steps 5
-  tar czf comb_flow_uni_data.tar.gz -C <out_dir> data
+  tar czf combustion_dns_data.tar.gz -C <out_dir> data
   ```
 
   The subset converts and checks exactly like the full trajectory, since the

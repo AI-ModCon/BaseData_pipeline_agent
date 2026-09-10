@@ -1,5 +1,5 @@
 ---
-title: Fusion Foundation Model (XGC)
+title: Plasma Turbulence Training Data (XGC)
 domain: Plasma physics — gyrokinetic turbulence simulation (XGC) training-data prep
 summary: >-
   Register the XGC preprocessing scripts as codes and drive them through

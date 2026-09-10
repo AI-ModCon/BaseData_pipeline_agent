@@ -73,4 +73,4 @@ Four script versions were developed iteratively. See [development_summary_report
 |------|-------------|
 | [conversion_comparison_report.md](conversion_comparison_report.md) | v1 vs holdout for `lifted_hydrogen_jet` |
 | [channelflow_conversion_report.md](channelflow_conversion_report.md) | v3 vs holdout for `nonreacting_channel_flow` |
-| [compare_holdout_conversion.md](compare_holdout_conversion.md) | v4 vs holdout `convert_to_well_format.py` (original script from COMB-FLOW team) |
+| [compare_holdout_conversion.md](compare_holdout_conversion.md) | v4 vs holdout `convert_to_well_format.py` (the upstream converter) |
