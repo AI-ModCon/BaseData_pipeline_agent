@@ -28,6 +28,7 @@ file produced upstream. It reproduces the workflow that produced the converter
 in [`reference/`](reference/); that development history, with the bugs each
 version had, is in
 [`reference/development_history.md`](reference/development_history.md).
+The walkthrough has been run end to end with Claude Code on Sonnet 4.5.
 
 Folder contents:
 
