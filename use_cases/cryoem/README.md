@@ -184,12 +184,12 @@ Reconstruct the pipeline from the execution records as a bash script.
 ## Post-Conditions
 
 1. Knowledge base contains `cryoppp` collection with repo code, docs, and appended papers.
-2. Code registry includes the `aidrin` code (placed at init), the CryoPPP processing codes, and the quality-scoring code.
+2. `skills/aidrin/` is present (installed at init); the code registry includes the CryoPPP processing codes and the quality-scoring code.
 3. Quality-scored CSV exists with tier distribution; `particles.csv` (merged) and `particles_curated.csv` (curated) exist with `trace_archive/` records for both operations.
 4. `audit/` holds the gate's pre/post AIDRIN reports for the merge and curation steps, and the scores show curation reduced outliers (~0.041 → ~0.029).
 5. A datacard exists for the processed dataset.
 6. A reconstructed pipeline script is available.
-7. Code execution records in `trace_archive/` document the full provenance chain, including one record per gate run.
+7. Code execution records in `trace_archive/` document the full provenance chain, including one record per metric of each gate run.
 8. MLflow traces (in the serverless `mlflow.db` store) capture token usage, latency, and full request/response history.
 
 ## What This Tests

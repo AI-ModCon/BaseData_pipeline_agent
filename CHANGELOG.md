@@ -6,6 +6,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-11
+
 ### Changed
 
 - DSAgt holds no skills of its own. `dsagt init` installs two base skills into
@@ -14,8 +16,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   (`skills/basedata-skills/`) and `aidrin` from `idtlab/AIDRIN`. The `aidrin`
   skill-catalog source is gone (it held that one skill), and so is the built-in
   `aidrin` gate code: the readiness gate now installs AIDRIN and instructs the
-  agent to run the profile's metrics through the `aidrin` skill's CLI, wrapped
-  by `dsagt-run`.
+  agent to run the profile's metrics through the `aidrin` skill's CLI. The
+  gate block requires the `dsagt-run --code aidrin` wrapper for every `aidrin`
+  command in the project, so each run is recorded.
 - The `genesis` skill source is `github.com/AI-ModCon/genesis-skills`.
 - Intel Macs are no longer a supported platform. The `darwin/x86_64` entry in
   `required-environments` held every environment on torch 2.2.2 and NumPy 1.x;
@@ -28,6 +31,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- The MCP server copied every collection in the shared `kb_index/` into the
+  project at startup, so a skill catalog excluded at `dsagt init` still
+  appeared as synced. The server now only opens the project's own `kb_index`;
+  `dsagt init` is the one place collections are provisioned.
 - `run_command` accepted its `command` as one argv element, so a code spec's
   multi-word executable (`dsagt-run --code x -- python ...`) failed with
   "not found". The string is now split like a shell would.
@@ -207,5 +214,6 @@ rebuild-not-migrate, and no project data changes:
   generation, MLflow/OTel observability, the tool/skill registry, execution
   provenance, and explicit + episodic memory.
 
+[0.3.0]: https://github.com/AI-ModCon/dsagt/compare/0.2.0...0.3.0
 [0.2.0]: https://github.com/AI-ModCon/dsagt/compare/0.1.0...0.2.0
 [0.1.0]: https://github.com/AI-ModCon/dsagt/releases/tag/0.1.0

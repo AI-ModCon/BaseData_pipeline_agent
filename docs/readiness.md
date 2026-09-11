@@ -24,6 +24,8 @@ readiness:
 
 ## Rules the agent follows
 
+Every `aidrin` command in the project, gate run or not, goes through `dsagt-run --code aidrin` so it is recorded; the AIDRIN MCP tools are not wired in, so the agent uses the CLI path.
+
 1. Before and after each operation on a tabular file (CSV, Excel, JSON, HDF5, Parquet, npz), run every metric of the project profile on that file, one `aidrin run <metric> <file>` per metric, each wrapped by `dsagt-run --code aidrin` so it is recorded. Collected reports go to `audit/step_N_pre.aidrin.json` and `audit/step_N_post.aidrin.json`.
 2. The gate is fixed: gate runs skip the skill's intent-elicitation and plan-confirmation steps. The skill's full workflow is for readiness assessments the user asks for beyond the profile.
 3. After the post-run, report the per-metric change to the user before proposing the next step.
@@ -83,7 +85,7 @@ the next step. Expected values on this dataset (pre column measured directly):
 | 3 outliers | outliers (`temperature`) | 0.0225 | lower |
 
 Afterwards, `ls ~/dsagt-projects/gate-demo/audit` shows the six reports and `trace_archive/`
-holds one record per gate run and per operation. Clean up with `dsagt rm gate-demo -y`.
+holds one record per metric of each gate run and one per operation. Clean up with `dsagt rm gate-demo -y`.
 
 ## Demos
 

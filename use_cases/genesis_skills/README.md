@@ -1,6 +1,6 @@
 ---
 title: Genesis Skills for Data Curation
-domain: Skill management — external skill catalog (Genesis / OSTI GitLab) driving a data-curation pipeline
+domain: Skill management — the external Genesis skill catalog driving a data-curation pipeline
 summary: >-
   Sync the Genesis skill catalog, install data-curation skills (datacard
   generation, Croissant validation), ground them in the dataset's domain
@@ -16,7 +16,7 @@ order: 60
 > network access to `github.com`).
 
 An end-to-end **data-preparation** walkthrough that exercises the skill catalog
-against the **Genesis** source (OSTI GitLab). The agent pulls in the
+against the **Genesis** source (AI-ModCon on GitHub). The agent pulls in the
 BASE-Data/ModCon curation skills, grounds itself in the dataset's domain
 documents, then prepares and **datacards a finished dataset**.
 
@@ -108,13 +108,13 @@ Confirm from a shell (the native skills directory is `.claude/skills/` for Claud
 `.agents/skills/` for Codex, Goose, and opencode, `.cline/skills/` for Cline):
 
 ```bash
-dsagt info genesis-skills                  # KB lists skills_catalog__genesis-genesis-skills
+dsagt info genesis-skills                  # KB lists skills_catalog__ai-modcon-genesis-skills
 ls "$PROJ/skills/"                         # aidrin  croissant-validator  datacard-generator  skill-creator
 cat "$PROJ/skills/datacard-generator/PROVENANCE.txt"
 ls "$PROJ/audit/"                          # catalyst_screening_datacard.md
 ```
 
-1. The KB holds a `skills_catalog__genesis-genesis-skills` collection
+1. The KB holds a `skills_catalog__ai-modcon-genesis-skills` collection
    (searchable via `search_skills`).
 2. `datacard-generator` and `croissant-validator` are installed into
    `<project>/skills/` and mirrored into the agent's native skills directory,
