@@ -17,8 +17,6 @@ composes their ``(tools, handlers)`` under one dispatch shell
 imports are *lazy* (inside :func:`create_dsagt_server` / :func:`main`) so the
 concern modules can import :func:`build_dispatch_server` from here without a
 cycle.
-
-See ``design-notes/skills-catalog-server-merge.md`` §2.
 """
 
 import os
