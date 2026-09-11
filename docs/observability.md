@@ -7,10 +7,10 @@ DSAgt logs traces to a **MLflow** via an SQLite file at `~/dsagt-projects/<proje
 To view in the MLflow UI:
 
 ```bash
-dsagt traces <project> # rund dsagt mlflow ui --backend-store-uri sqlite:///<project>/mlflow.db
+dsagt traces <project> # runs mlflow ui --backend-store-uri sqlite:///<project>/mlflow.db
 ```
 
-`dsagt info <name>` prints the resolved tracking URI and a session/trace summary. The tracking URI resolves as `MLFLOW_TRACKING_URI` env → project config → the `sqlite:///<project>/mlflow.db` default.
+`dsagt info <name>` prints the resolved tracking URI and a session/trace summary. The tracking URI is always `sqlite:///<project>/mlflow.db`, computed from the project directory.
 
 ## Two feeds
 
@@ -34,7 +34,7 @@ Agent traces are reconstructed from each agent's on-disk session record. A per-a
 
 Every span carries the project's session id (minted per launch into `<project>/.dsagt/state.yaml`) for filtering in the MLflow trace view.
 
-The trace scan runs at periodic intervals (2m) inside the MCP server — At each interval DSAgt reads new transcript records, translates completed turns, and translates the canonical trace format to episodic memory in the knowledge base, and MLflow records in the MLFlow store. 
+The trace scan runs every 45 seconds inside the MCP server. At each interval DSAgt reads new transcript records, translates completed turns, and translates the canonical trace format to episodic memory in the knowledge base, and MLflow records in the MLFlow store. 
 
 ## Try it
 
