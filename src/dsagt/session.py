@@ -47,7 +47,7 @@ DEFAULT_PROJECTS_BASE = Path.home() / "dsagt-projects"
 # ``dsagt init``).  Migrated from ``~/.dsagt/`` on 2026-05-07.
 REGISTRY_DIR = DEFAULT_PROJECTS_BASE
 REGISTRY_FILE = REGISTRY_DIR / "projects.yaml"
-RESERVED_PROJECT_NAMES = ("projects.yaml", "kb_index", ".skill_sources")
+RESERVED_PROJECT_NAMES = ("projects.yaml", "kb_index", ".skill_sources", ".tools")
 
 # Per-project dsagt state lives under a hidden ``.dsagt/`` dir (alongside
 # explicit memory): ``config.yaml`` (the MCP-server object settings the user
@@ -144,6 +144,7 @@ def build_config(
     knowledge: dict | None = None,
     skills: dict | None = None,
     episodic: dict | None = None,
+    readiness: dict | None = None,
 ) -> dict:
     """Assemble a project's ``.dsagt/config.yaml`` body.
 
@@ -157,6 +158,8 @@ def build_config(
     - ``skills.sources`` — the skill-catalog repos chosen.
     - ``episodic`` — written *only when the user opted in* (it's an opt-in, so a
       disabled project stays minimal and backfills ``enabled: false`` on read).
+    - ``readiness`` — written only when the user opted into the readiness
+      gate (``tool`` / ``executable`` / ``profile``; see :mod:`dsagt.readiness`).
 
     Everything else (embedding backend, chunk_size, rerank, populate_native)
     is a code default backfilled on read — NOT a written choice.  Credentials
@@ -170,6 +173,8 @@ def build_config(
     }
     if episodic:
         body["episodic"] = episodic
+    if readiness:
+        body["readiness"] = readiness
     return body
 
 
@@ -180,10 +185,16 @@ def default_config_content(
     knowledge: dict | None = None,
     skills: dict | None = None,
     episodic: dict | None = None,
+    readiness: dict | None = None,
 ) -> str:
     """Serialize :func:`build_config` to YAML for ``.dsagt/config.yaml``."""
     body = build_config(
-        project_name, agent, knowledge=knowledge, skills=skills, episodic=episodic
+        project_name,
+        agent,
+        knowledge=knowledge,
+        skills=skills,
+        episodic=episodic,
+        readiness=readiness,
     )
     return yaml.dump(body, default_flow_style=False, sort_keys=False)
 
@@ -577,6 +588,28 @@ def _provision_kb(
         print("  Knowledge base ready.", flush=True)
 
 
+def _provision_readiness(readiness: dict) -> None:
+    """Install the readiness tool the project opted into (one-time, shared).
+
+    A failed install is printed, not raised: the config still records the
+    expected executable path, so a re-run of ``dsagt init`` (or a manual
+    install at that path) completes the setup without losing other choices.
+    """
+    from dsagt.readiness import AIDRIN_EXECUTABLE, ensure_aidrin
+
+    if readiness["executable"] != str(AIDRIN_EXECUTABLE):
+        return  # user-supplied install; nothing to provision
+    if AIDRIN_EXECUTABLE.exists():
+        return
+    print("Installing AIDRIN (one-time, shared across projects) …", flush=True)
+    try:
+        ensure_aidrin()
+    except RuntimeError as e:
+        print(f"  Warning: {e}\n  Re-run `dsagt init` to retry.", flush=True)
+        return
+    print("  AIDRIN ready.", flush=True)
+
+
 def init_project(
     project_name: str,
     agent: str,
@@ -588,6 +621,7 @@ def init_project(
     knowledge: dict | None = None,
     skills: dict | None = None,
     episodic: dict | None = None,
+    readiness: dict | None = None,
 ) -> Path:
     """Create or reconfigure a project — ``dsagt init`` is re-runnable.
 
@@ -630,14 +664,23 @@ def init_project(
     # the user hasn't touched; edited/overridden dirs are never clobbered.
     from dsagt.registry import CodeRegistry
 
-    CodeRegistry(runtime_dir=pdir).ensure_bundled_copies()
+    optional = frozenset({readiness["tool"]}) if readiness else frozenset()
+    CodeRegistry(runtime_dir=pdir).ensure_bundled_copies(optional=optional)
+
+    if readiness:
+        _provision_readiness(readiness)
 
     _provision_kb(pdir, include, exclude, embedding=embedding)
 
     write_config_file(
         pdir,
         build_config(
-            project_name, agent, knowledge=knowledge, skills=skills, episodic=episodic
+            project_name,
+            agent,
+            knowledge=knowledge,
+            skills=skills,
+            episodic=episodic,
+            readiness=readiness,
         ),
     )
 

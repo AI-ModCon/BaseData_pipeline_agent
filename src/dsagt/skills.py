@@ -195,6 +195,14 @@ KNOWN_SOURCES: dict[str, dict] = {
         "catalog: HPC (Slurm/PBS, Perlmutter/Aurora/Frontier), HuggingFace, "
         "LangChain, OpenAI, Anthropic, plasma-sim, ModCon, and more (70+).",
     },
+    "aidrin": {
+        "url": "https://github.com/idtlab/AIDRIN",
+        "branch": "develop",
+        "subdir": ".claude/skills",
+        "description": "AIDRIN (AI Data Readiness Inspector) — the upstream "
+        "`aidrin` skill: data-readiness metrics (quality, fairness, privacy, "
+        "completeness, duplicates, outliers) over CSV/Excel/JSON/HDF5/Parquet.",
+    },
 }
 
 #: Shared, machine-global cache of cloned source repos (sibling of kb_index/).

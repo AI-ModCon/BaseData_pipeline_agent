@@ -134,10 +134,25 @@ def static_agent_record(
 
     Idempotent.  If the dsagt marker is already in the instructions file,
     the write is skipped — preserves any user edits made between init
-    and start.
+    and start.  When the project opted into the readiness gate, its
+    instructions block is appended to the same file under its own marker.
     """
-    del config  # reserved
-    return _setup_for(agent).write_static(Path(working_dir))
+    setup = _setup_for(agent)
+    working_dir = Path(working_dir)
+    actions = setup.write_static(working_dir)
+    readiness = config.get("readiness")
+    if readiness:
+        from dsagt.agents.base import _append_or_write
+        from dsagt.readiness import READINESS_MARKER, instructions_block
+
+        action = _append_or_write(
+            working_dir / setup.static_marker,
+            instructions_block(readiness),
+            READINESS_MARKER,
+        )
+        if action:
+            actions.append(action.replace("DSAgt instructions", "readiness gate"))
+    return actions
 
 
 def static_agent_files_present(agent: str, working_dir: str | Path) -> bool:

@@ -71,10 +71,14 @@ dsagt smoke-test --agent claude
 
 - **Code Specs** — DSAgt's built-in code specs, always set up so the agent finds them via `search_registry` from the first session.
 - **Skill Corpus** — the skill sources you chose at init (default `genesis`), cloned and indexed so `search_skills` returns installable skills.
-- **Knowledge Collections** — optional reference document sets you chose at init (`nemo_curator`, `aidrin`).
+- **Knowledge Collections** — optional reference document sets you chose at init (`nemo_curator`).
 
 `--include` / `--exclude` (asset names, or `all`) select the set non-interactively. The default embedder is a local sentence-transformers model (~130 MB, CPU-side, no API key).
 
 ## Optional: Episodic Memory
 
 Answer **yes** to "Enable episodic memory?" in the `dsagt init` prompts to have the MCP server capture each session turn into a searchable `session_memory` collection. Capture is mechanical (chunk + embed) and reuses the local embedder, so there's nothing extra to download. See [Memory → Episodic Memory](memory.md#episodic-memory).
+
+## Optional: Readiness Gate
+
+Answer **yes** to "Enable the AIDRIN readiness gate?" to have the agent run AIDRIN data-readiness metrics before and after every tabular pipeline stage. Init installs AIDRIN once into `~/dsagt-projects/.tools/`. See [Readiness Gate](readiness.md).

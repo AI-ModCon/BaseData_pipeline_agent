@@ -158,7 +158,10 @@ class TestResolveAssets:
 
     def test_include_subset_returns_canonical_order(self):
         # input order shouldn't matter — cheap assets always built first.
-        assert resolve_assets(include=["aidrin", "codes"]) == ["codes", "aidrin"]
+        assert resolve_assets(include=["nemo_curator", "codes"]) == [
+            "codes",
+            "nemo_curator",
+        ]
 
     def test_exclude_trims_the_default_set(self):
         assert resolve_assets(exclude=["genesis"]) == ["codes"]

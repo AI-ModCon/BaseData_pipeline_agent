@@ -20,6 +20,21 @@ Skills fall into two sets — the searchable **corpus** and the project's **inst
 
 - **Federated and provenance-preserving.** Each source is an independent per-source collection, so re-syncing one never disturbs another; installing a skill from the corpus preserves its upstream `LICENSE`/`NOTICE` and stamps a `PROVENANCE.txt` into the installed directory.
 
+## Sources
+
+`dsagt init` enables the `genesis` source by default. The others are enabled at init (the interactive checkbox, or `--include <name>`) or during a session with the `add_skill_source` tool, which also accepts any git URL. A source is a git repository holding `SKILL.md` directories; discovery is recursive under the configured subdirectory.
+
+| Name | Repository | Contents |
+|---|---|---|
+| `genesis` (default) | `gitlab.osti.gov/genesis/genesis-skills`, `skills/` | HPC job and site skills (`slurm`, `pbs`, `perlmutter`, `aurora`, `frontier`); ModCon data skills (`datacard-generator`, `croissant-validator`, `hdmf-schema-builder`); plasma simulation (`gkeyll`, `gs2`); vendor skill sets from Anthropic, OpenAI, HuggingFace, LangChain, and superpowers; `academy`, `literature-search`. 70+ skills. |
+| `aidrin` | `github.com/idtlab/AIDRIN`, `.claude/skills/` (branch `develop`) | The `aidrin` skill: AI-readiness metrics (quality, fairness, privacy, completeness, duplicates, outliers) over CSV, Excel, JSON, HDF5, and Parquet. Running it requires the AIDRIN package; the skill's `reference/installation.md` covers setup. |
+| `k-dense-ai` | `github.com/K-Dense-AI/scientific-agent-skills` | 140+ chemistry, biology, medicine, and materials skills. |
+| `anthropic` | `github.com/anthropics/skills`, `skills/` | Anthropic document-editing and design skills. |
+| `antigravity` | `github.com/sickn33/antigravity-awesome-skills` | 1,500+ cross-platform agent skills. |
+| `composio` | `github.com/ComposioHQ/awesome-claude-skills` | Workflow skills for SaaS applications. |
+
+The `genesis` source is the ModCon aggregation point: skills contributed by other ModCon and AmSC teams (Globus Compute, IRI API, data movement) land there and become searchable on the next sync.
+
 ## Built-in and authored skills
 
 DSAgt provides a `skill-creator` skill (for scaffolding new `SKILL.md` skills). Built-in and installed skills are **not** indexed for search — the agent auto-discovers `SKILL.md` folders natively — so `search_skills` is reserved for the corpus. Domain skills, including the MODCON `datacard-generator`, are sourced from the external corpus rather than built in, so they stay current upstream.

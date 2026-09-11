@@ -387,6 +387,29 @@ class TestCollectSettings:
         assert s["assets"] == ["codes", "nemo_curator", "anthropic"]
         assert s["episodic"] is None
 
+    def test_non_interactive_readiness_flag(self, tmp_path):
+        """--readiness aidrin builds the opt-in block; --readiness-executable
+        overrides the shared install path."""
+        import types
+        from dsagt.commands import cli
+        from dsagt.readiness import AIDRIN_EXECUTABLE
+
+        args = types.SimpleNamespace(
+            agent="claude", include=["codes"], exclude=None, readiness="aidrin"
+        )
+        s = cli._collect_settings(args, interactive=False, existing={}, pdir=None)
+        assert s["readiness"] == {
+            "tool": "aidrin",
+            "executable": str(AIDRIN_EXECUTABLE),
+            "profile": "quality",
+        }
+        args.readiness_executable = str(tmp_path / "aidrin")
+        s = cli._collect_settings(args, interactive=False, existing={}, pdir=None)
+        assert s["readiness"]["executable"] == str(tmp_path / "aidrin")
+        args.readiness = None
+        s = cli._collect_settings(args, interactive=False, existing={}, pdir=None)
+        assert s["readiness"] is None
+
     def test_non_interactive_episodic_flag(self):
         """--episodic builds the opt-in block on the no-TTY path."""
         import types
@@ -426,6 +449,46 @@ class TestInitProject:
         # written lazily by the MLflow client on first span.
         assert not (pdir / "mlflow.db").exists()
         assert not (pdir / "mlflow").exists()
+
+    def test_readiness_opt_in_copies_aidrin_code_and_writes_block(self, tmp_path):
+        """The bundled ``aidrin`` code lands only in projects that opted in,
+        and the config records the readiness block.  A user-supplied
+        executable skips provisioning entirely."""
+        from dsagt.readiness import readiness_block
+
+        pdir = init_project("plain", "claude", exclude=["all"])
+        assert not (pdir / "codes" / "aidrin").exists()
+        assert "readiness" not in load_config("plain")
+
+        block = readiness_block("aidrin", executable=tmp_path / "aidrin")
+        pdir = init_project("gated", "claude", exclude=["all"], readiness=block)
+        assert (pdir / "codes" / "aidrin" / "SKILL.md").exists()
+        assert (pdir / "codes" / "aidrin" / "scripts" / "aidrin.py").exists()
+        assert load_config("gated")["readiness"] == block
+
+    def test_readiness_install_failure_keeps_config(
+        self, monkeypatch, capsys, tmp_path
+    ):
+        """A failed AIDRIN install is reported and the config still carries
+        the expected executable path so a re-init can retry."""
+        from dsagt import readiness as rd
+
+        def boom():
+            raise RuntimeError("no network")
+
+        # AIDRIN_EXECUTABLE is fixed at import time from the real registry
+        # dir, where a developer machine may hold an install; point it at a
+        # path that does not exist so the install path runs.
+        monkeypatch.setattr(
+            rd, "AIDRIN_EXECUTABLE", tmp_path / "aidrin" / "bin" / "aidrin"
+        )
+        monkeypatch.setattr(rd, "ensure_aidrin", boom)
+        block = rd.readiness_block("aidrin")
+        init_project("gated", "claude", exclude=["all"], readiness=block)
+        assert "no network" in capsys.readouterr().out
+        assert load_config("gated")["readiness"]["executable"] == str(
+            rd.AIDRIN_EXECUTABLE
+        )
 
     def test_config_is_valid(self):
         init_project("myproj", "claude")
@@ -612,6 +675,36 @@ class TestAgentRecord:
         assert (working_dir / "CLAUDE.md").exists()
         # BYOA: .dsagt_env is no longer written; user manages shell env.
         assert not (working_dir / ".dsagt_env").exists()
+
+    def test_readiness_block_appended_once(self, tmp_path):
+        """With the gate enabled, the instructions file carries the readiness
+        block after the master instructions; re-running appends nothing."""
+        from dsagt.readiness import READINESS_MARKER, readiness_block
+
+        init_project(
+            "testproj",
+            "claude",
+            exclude=["all"],
+            readiness=readiness_block("aidrin", executable=tmp_path / "aidrin"),
+        )
+        config = load_config("testproj")
+        working_dir = tmp_path / "workdir"
+        working_dir.mkdir()
+        static_agent_record(config, "claude", working_dir)
+        text = (working_dir / "CLAUDE.md").read_text()
+        assert text.count(READINESS_MARKER) == 1
+        assert text.index("DSAgt Pipeline Builder") < text.index(READINESS_MARKER)
+        static_agent_record(config, "claude", working_dir)
+        assert (working_dir / "CLAUDE.md").read_text() == text
+
+    def test_no_readiness_block_when_off(self, tmp_path):
+        from dsagt.readiness import READINESS_MARKER
+
+        config = self._init_and_load("claude")
+        working_dir = tmp_path / "workdir"
+        working_dir.mkdir()
+        static_agent_record(config, "claude", working_dir)
+        assert READINESS_MARKER not in (working_dir / "CLAUDE.md").read_text()
 
     def test_goose_writes_goose_yaml(self, tmp_path):
         config = self._init_and_load("goose")

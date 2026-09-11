@@ -333,6 +333,16 @@ class TestBundledCopies:
         assert (copied / "scripts" / "scan_directory.py").exists()
         assert reg.get_code("scan-directory") is not None
 
+    def test_optional_code_copied_only_when_named(self, tmp_path):
+        """``aidrin`` is bundled but copied only for projects that opted in."""
+        reg = CodeRegistry(runtime_dir=str(tmp_path / "rt"))
+        reg.ensure_bundled_copies()
+        assert not (tmp_path / "rt" / "codes" / "aidrin").exists()
+        actions = reg.ensure_bundled_copies(optional=frozenset({"aidrin"}))
+        assert any("aidrin" in a for a in actions)
+        assert (tmp_path / "rt" / "codes" / "aidrin" / "scripts" / "aidrin.py").exists()
+        assert reg.get_code("aidrin") is not None
+
     def test_never_clobbers_existing_copy(self, tmp_path):
         """A user-edited (or agent-overridden) code dir is left untouched."""
         reg = CodeRegistry(runtime_dir=str(tmp_path / "rt"))
