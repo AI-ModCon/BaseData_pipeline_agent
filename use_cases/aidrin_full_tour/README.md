@@ -76,7 +76,7 @@ Paste these prompts one at a time.
 Using the aidrin skill, list the readiness metrics AIDRIN provides.
 ```
 
-**Verify:** the agent reads `skills/aidrin/SKILL.md` and runs `aidrin list` through `dsagt-run`.
+**Verify:** the agent reads `skills/aidrin/SKILL.md` and its `reference/metrics.md` and lists the metrics by category; it may also run `aidrin list` through `dsagt-run`.
 
 ### 2. Run the metrics
 
@@ -193,7 +193,7 @@ Reconstruct the full readiness assessment you just ran from the execution record
 | DSAgt Capability | Steps |
 |------------------|-------|
 | The `aidrin` base skill installed at init; the readiness gate enabled | Setup |
-| Registry search | 1 |
+| Base-skill use: the `aidrin` CLI through `dsagt-run` | 1 |
 | Code execution with provenance (execution records in `trace_archive/`) | 2 |
 | Multi-metric orchestration | 2 |
 | Multi-metric / batch execution | 3 |

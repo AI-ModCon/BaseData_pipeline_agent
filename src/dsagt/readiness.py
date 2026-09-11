@@ -143,12 +143,16 @@ AIDRIN is enabled as the readiness check for this project. It replaces the
 generic `check_[X]` in the per-operation check rule for every stage whose
 input or output is a tabular file (CSV, Excel, JSON, HDF5, Parquet, npz).
 The `aidrin` skill in `skills/aidrin/` documents the CLI; the executable for
-this project is `{executable}`.
+this project is `{executable}`. The AIDRIN MCP tools are not available here:
+use the CLI path. Every `aidrin` command in this project — `list`,
+`summarize`, `run`, `batch`, whether or not it is a gate run — goes through
+dsagt-run so it is recorded:
+`dsagt-run --code aidrin -- {executable} <aidrin args>`.
 
 1. Before and after each data operation on a tabular file — including a merge,
    filter, or conversion you implement yourself — run every metric of the
    project profile (`{profile}`: {metrics}) on that file, one metric per
-   call, each wrapped by dsagt-run so it is recorded:
+   call:
    `dsagt-run --code aidrin -- {executable} run <metric> <file> [args]`.
    Column arguments follow the skill's `reference/metrics.md`; ask the user
    for the target column once per pipeline. Collect the JSON outputs into
