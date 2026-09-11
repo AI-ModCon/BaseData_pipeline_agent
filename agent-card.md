@@ -12,7 +12,6 @@ base_model: N/A  # DSAgt is agent-platform-agnostic; it wraps Claude Code, Goose
 
 datasets:
     - # NeMo Curator reference corpus (optional knowledge collection, indexed at dsagt init)
-    - # AI Data Readiness Inspector (AIDRIN) reference corpus (optional knowledge collection)
 
 metrics:
     - # Code registration success rate
@@ -25,7 +24,7 @@ agent_card:
   provider:
     organization: "DOE AI ModCon Base Data Team (DOE Genesis Mission)"
     url: "https://github.com/AI-ModCon/dsagt"
-  version: "0.2.0"
+  version: "0.2.1"
   documentation_url: "https://ai-modcon.github.io/dsagt/"
   protocol_version: "N/A"  # DSAgt extends existing agent CLIs via MCP; it is not itself an A2A service
   preferred_transport: "stdio"
@@ -108,7 +107,7 @@ Extensions:
 
 DSAgt is an AI-assisted data pipeline builder. It connects an MCP-compatible agent CLI (Claude Code, Goose, Codex, opencode, or Cline) to code registration, a semantic knowledge base, skill discovery, execution provenance, and observability infrastructure — without modifying the agent itself.
 
-*Last Updated*: **2026-07-02**
+*Last Updated*: **2026-09-11**
 
 ## Developed by
 
@@ -128,6 +127,7 @@ See https://github.com/AI-ModCon/dsagt/graphs/contributors for full list.
 
 ## Agent Changelog
 
++ **2026-09-11** v0.2.1 — base skills (`skill-creator`, `aidrin`) installed from their upstream repositories at init; the readiness gate wraps every `aidrin` call with `dsagt-run`; the server opens only the project KB; every dependency a range; Intel Mac support dropped
 + **2026-07-08** v0.2.0 — single merged `dsagt-server` (20 tools); serverless SQLite MLflow store (no ports, no OTel, no proxy); external skill catalogs; proxy-free agent-transcript trace pipeline + opt-in episodic memory; registered executables are **codes** (skill-standard dirs), natively discoverable as soon as they are added; `dsagt traces` viewer
 + **2026-06-30** initial public version (v0.1.0)
 
@@ -246,16 +246,16 @@ DSAgt runs locally as a CLI tool. The MCP server is launched as a subprocess by 
 
 ### Hardware
 
-Runs on any developer workstation or compute node with Python 3.12+. The default embedding backend is CPU-only (no GPU required). Tested on macOS (arm64, x86_64) and Linux (x86_64).
+Runs on any developer workstation or compute node with Python 3.12+. The default embedding backend is CPU-only (no GPU required). Tested on macOS (arm64) and Linux (x86_64).
 
 ### Software
 
 Python 3.12 or 3.13, `uv` package manager. Key dependencies:
 
-- `mcp>=1.0.0` — MCP server framework
-- `mlflow==3.11.1` — trace store and observability (serverless SQLite backend)
+- `mcp>=2.0,<3.0` — MCP server framework
+- `mlflow>=3.11,<4.0` — trace store and observability, serverless SQLite backend
 - `chromadb>=1.5.1` — vector store
-- `sentence-transformers==5.4.0` — local embeddings and reranking
+- `sentence-transformers>=6.0,<7.0` — local embeddings and reranking
 - `llama-index-core>=0.11` — document and code chunking
 - `rank-bm25>=0.2.2` — sparse keyword retrieval for hybrid search
 - `questionary>=2.0` — interactive `dsagt init` menus
@@ -386,7 +386,7 @@ DSAgt executes arbitrary CLI codes registered by the agent. The registry wraps c
 # Agent evaluation details
 
 - **Smoke test**: `dsagt smoke-test --agent <platform>` runs two full agent sessions non-interactively and asserts 18 artifacts: code registration + execution provenance, knowledge ingest + retrieval, skill catalog install, native skill mirroring, explicit + episodic memory, cross-session recall, agent-trace recovery, and session state
-- **Unit tests**: `uv run python -m pytest tests/` (~640 tests; integration tests requiring credentials live in `test_*_integration.py`)
+- **Unit tests**: `uv run python -m pytest -m "not integration"` (integration tests requiring credentials are in `test_*_integration.py`)
 - **Code-call correctness**: verified by checking `trace_archive/` records for expected exit codes and captured output
 - **Knowledge base precision**: evaluated via retrieval assertions in the smoke test (the agent must answer from ingested docs)
 

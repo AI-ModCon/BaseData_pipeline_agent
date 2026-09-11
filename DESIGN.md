@@ -22,14 +22,14 @@ Commands are entry points with argparse; modules are importable logic.
 | `commands/setup_core_kb.py` | the KB asset build (`resolve_assets`, `ensure_assets`) that `dsagt init` calls |
 | `session.py` | project init, config load and validation, session minting (`append_session`, `session_tag`), startup catch-up (`catch_up_extraction`) |
 | `agents/` | one `AgentSetup` subclass per platform, each owning `write_static`, `write_dynamic`, `runtime_env`, `vscode_hint`; shared helpers in `base.py` |
-| `knowledge/` | `KnowledgeBase` over ChromaDB: hybrid dense + BM25 retrieval, embedding backends, per-collection routing; the reference module for house style |
-| `registry/` | `CodeRegistry` (codes) and `SkillRegistry` (installed skills) |
+| `knowledge.py` | `KnowledgeBase` over ChromaDB: hybrid dense + BM25 retrieval, embedding backends, per-collection routing; the reference module for house style |
+| `registry.py` | `CodeRegistry` (codes) and `SkillRegistry` (installed skills) |
 | `provenance.py` | `run_and_record`, `CodeUseIndexer` (execution records into `code_use`), `reconstruct_pipeline` |
-| `observability.py` | the live tracer: `init_tracing`, `traced`, `obs`, `child_span`, and typed span helpers over `mlflow.start_span` |
-| `memory/` | `ExplicitMemory` (YAML with a vector mirror) and `MemoryExtractor` (the episodic trace consumer) |
+| `observability.py` | the live tracer (`init_tracing`, `traced`, `obs`, `child_span`, and typed span helpers over `mlflow.start_span`) and `MLflowSink`, the trace consumer that replays a finished transcript with its original timestamps over `mlflow.start_span_no_context` |
+| `memory.py` | `ExplicitMemory` (YAML with a vector mirror) and `MemoryExtractor` (the episodic trace consumer) |
 | `readiness.py` | the opt-in AIDRIN gate: `ensure_aidrin`, the metric profiles, `instructions_block` |
-| `skills/` | `SkillsCatalog` (clone, sync, index, install), `SkillRouter`, `rank_skills`, `BASE_SKILLS` and `install_base_skills` |
-| `traces/` | `trace.py` (`Trace`), `readers.py` (one `Reader` per agent), `translators.py`, `collector.py` (`TraceCollector`, `make_trace_collector`), `sink.py` (`MLflowSink`) |
+| `skills.py` | `SkillsCatalog` (clone, sync, index, install), `SkillRouter`, `rank_skills`, `BASE_SKILLS` and `install_base_skills` |
+| `traces.py` | `Trace`, one `Reader` and one `Translator` per agent, `TraceCollector` and `make_trace_collector`; imports nothing heavy at module scope |
 | `mcp/` | `server.py` (`main`, shared-KB startup, `build_dispatch_server`) and one `*_tools.py` per concern |
 | `codes/` | built-in codes as skill-standard dirs, indexed by `dsagt init` |
 | `dsagt_instructions.md` | agent-agnostic instructions injected into the per-agent instructions file |
@@ -63,6 +63,6 @@ Commands are entry points with argparse; modules are importable logic.
 
 ## Packaging
 
-- Core dependencies: `pyyaml`, `httpx`, `jsonschema`, `mcp`. Extras: `traces` (mlflow), `kb` (chromadb, sentence-transformers, llama-index, numpy, rank-bm25, and the rest of the retrieval stack), `cli` (questionary), `all`. dsagt itself runs from `dsagt[all]`; a downstream project declares the extra it uses.
-- Every subpackage imports on a core-only install, checked by the `import-leaf` CI job; a lazy import of a missing extra raises `ImportError` naming it.
+- Every dependency is a range with a next-major cap, so dsagt resolves beside a project that pins differently; `uv.lock` is the reproducible environment.
+- Another application runs the trace pipeline through `make_trace_collector`, pointing the readers at its own session directory with `sessions_root` and keeping ack state in its own directory with `ack_dir`.
 - Supported platforms are macOS arm64 and Linux x86_64 (`required-environments` in `pyproject.toml`).

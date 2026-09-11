@@ -21,7 +21,7 @@ Use `python -m pytest`, not bare `pytest` (the bare binary can resolve the wrong
 interpreter):
 
 ```bash
-uv run --no-sync python -m pytest -m "not integration" -q   # unit suite (~640 tests)
+uv run --no-sync python -m pytest -m "not integration" -q   # unit suite
 uv run --no-sync python -m pytest tests/test_config.py -q   # a single file
 uv run --no-sync python -m pytest -m integration -v         # integration (needs creds)
 ```
