@@ -125,7 +125,7 @@ Level 1 datacard. Take the values from the data and the reports, and note anythi
 than asking.
 ```
 
-The agent should find the `datacard-generator` skill in the `genesis` catalog via `search_skills` and install it with `install_skill` (only `skill-creator` is built in; domain skills come from catalogs).
+The agent should find the `datacard-generator` skill in the `genesis` catalog via `search_skills` and install it with `install_skill` (the base skills are `skill-creator` and `aidrin`; domain skills come from catalogs).
 
 ### 5. Reconstruct pipeline
 

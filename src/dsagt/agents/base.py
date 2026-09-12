@@ -352,12 +352,10 @@ class AgentSetup(ABC):
 
         codes = CodeRegistry(runtime_dir=working_dir, kb=None)
         reg = SkillRegistry(runtime_dir=working_dir, kb=None)
-        # Later entries win name collisions: codes first, then bundled
-        # skills, then project skills — a deliberately installed instruction
-        # skill outranks a registered code of the same name.
-        src_dirs = (
-            codes.code_dirs() + reg._bundled_skill_dirs() + reg._project_skill_dirs()
-        )
+        # Later entries win name collisions: codes first, then project
+        # skills — a deliberately installed instruction skill outranks a
+        # registered code of the same name.
+        src_dirs = codes.code_dirs() + reg.skill_dirs()
         target = working_dir
         for part in self.native_skills_dir.split("/"):
             target = target / part

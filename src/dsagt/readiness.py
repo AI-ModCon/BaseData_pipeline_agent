@@ -1,13 +1,16 @@
-"""Readiness gate — AIDRIN as the check code for every pipeline stage.
+"""Readiness gate — AIDRIN as the check for every pipeline stage.
 
 The pipeline-builder instructions require a paired check before and after
 every data operation, with reports in ``audit/``.  This module makes that
 check concrete: when a project opts in at ``dsagt init --readiness aidrin``,
-DSAGT provisions AIDRIN (AI Data Readiness Inspector) into a shared venv,
-copies the bundled ``aidrin`` code into the project, and appends a short
-instructions block telling the agent that ``check_[X]`` for tabular data is an
-AIDRIN gate run.  Metric selection is by named profile, not by prompt, so the
-agent runs the same metric set on every stage of a pipeline.
+DSAGT installs AIDRIN (AI Data Readiness Inspector) into a shared venv and
+appends an instructions block telling the agent that ``check_[X]`` for
+tabular data is an AIDRIN run of a fixed metric profile.  The ``aidrin``
+skill itself is one of the base skills every project carries
+(``skills.BASE_SKILLS``), fetched from the AIDRIN repository at init; the
+gate only makes the agent apply it on every stage.  Metric selection is by
+named profile, not by prompt, so the agent runs the same metric set on every
+stage of a pipeline.
 
 Three pieces, all keyed on the ``readiness`` block of ``.dsagt/config.yaml``::
 
@@ -17,8 +20,7 @@ Three pieces, all keyed on the ``readiness`` block of ``.dsagt/config.yaml``::
       profile: quality
 
 * :func:`ensure_aidrin` — the one-time install (``uv venv`` + ``uv pip``).
-* :data:`PROFILES` — metric sets the bundled ``aidrin`` code's ``gate``
-  subcommand expands (``codes/aidrin/scripts/aidrin.py``).
+* :data:`PROFILES` — the metric sets the instructions name.
 * :func:`instructions_block` — the text appended to the agent's instructions
   file by :func:`dsagt.agents.static_agent_record`.
 """
@@ -46,14 +48,13 @@ AIDRIN_PYTHON = ">=3.10,<3.13"
 #: Marker line the instructions block carries so the append is idempotent.
 READINESS_MARKER = "DSAgt Readiness Gate"
 
-#: Metric profiles the bundled ``aidrin`` code's ``gate`` subcommand expands.
-#: ``quality`` runs on any tabular file with no column arguments.
-#: ``supervised`` adds the target-dependent metrics and requires
-#: ``--target``; ``feature-relevance`` also needs ``--categorical`` and
-#: ``--numerical`` column lists.  Fairness-rate and privacy metrics are
-#: never in a profile: they assume sensitive attributes or
-#: quasi-identifiers, which is a per-dataset judgment the agent must make
-#: with the user (run them with the passthrough form).
+#: Metric profiles the gate instructions name.  ``quality`` runs on any
+#: tabular file with no column arguments.  ``supervised`` adds the
+#: target-dependent metrics: ``class-imbalance`` takes the target column and
+#: ``feature-relevance`` takes the categorical and numerical column lists
+#: plus the target.  Fairness-rate and privacy metrics are never in a
+#: profile: they assume sensitive attributes or quasi-identifiers, which is
+#: a per-dataset judgment the agent must make with the user.
 PROFILES: dict[str, tuple[str, ...]] = {
     "quality": ("completeness", "duplicity", "outliers"),
     "supervised": (
@@ -129,29 +130,45 @@ def ensure_aidrin(install_dir: Path = AIDRIN_DIR) -> Path:
 def instructions_block(readiness: dict) -> str:
     """The instructions appended to the agent's file when the gate is enabled.
 
-    Stated as rules the agent applies at every stage; the bundled ``aidrin``
-    code's SKILL.md carries the command forms.
+    Stated as rules the agent applies at every stage; the ``aidrin`` skill in
+    ``skills/aidrin/`` carries the command forms and the argument order of
+    each metric (``reference/metrics.md``).
     """
     profile = readiness.get("profile", "quality")
     metrics = ", ".join(PROFILES[profile])
+    executable = readiness["executable"]
     return f"""# {READINESS_MARKER}
 
 AIDRIN is enabled as the readiness check for this project. It replaces the
 generic `check_[X]` in the per-operation check rule for every stage whose
 input or output is a tabular file (CSV, Excel, JSON, HDF5, Parquet, npz).
+The `aidrin` skill in `skills/aidrin/` documents the CLI; the executable for
+this project is `{executable}`. The AIDRIN MCP tools are not available here:
+use the CLI path. Every `aidrin` command in this project — `list`,
+`summarize`, `run`, `batch`, whether or not it is a gate run — goes through
+dsagt-run so it is recorded:
+`dsagt-run --code aidrin -- {executable} <aidrin args>`.
 
 1. Before and after each data operation on a tabular file — including a merge,
-   filter, or conversion you implement yourself — run the registered
-   `aidrin` code's `gate` subcommand on that file with the project profile
-   (`{profile}`: {metrics}). Write the report to
-   `audit/step_N_pre.aidrin.json` / `audit/step_N_post.aidrin.json`.
-2. After the post-run, report the per-metric change between the pre and
+   filter, or conversion you implement yourself — run every metric of the
+   project profile (`{profile}`: {metrics}) on that file, one metric per
+   call:
+   `dsagt-run --code aidrin -- {executable} run <metric> <file> [args]`.
+   Column arguments follow the skill's `reference/metrics.md`; ask the user
+   for the target column once per pipeline. Collect the JSON outputs into
+   `audit/step_N_pre.aidrin.json` / `audit/step_N_post.aidrin.json`, keyed
+   by metric. `aidrin run` exits 0 on failure: a result holding an `Error`
+   key is a failed metric — record it as such and continue with the rest.
+2. The gate is fixed: for gate runs skip the skill's intent-elicitation and
+   plan-confirmation steps. Use the skill's full workflow only when the
+   user asks for a readiness assessment beyond the profile.
+3. After the post-run, report the per-metric change between the pre and
    post reports to the user in one short table before proposing the next step.
-3. Do not write a custom check code for a metric AIDRIN already provides.
+4. Do not write a custom check code for a metric AIDRIN already provides.
    Metrics outside the profile (fairness rates, privacy, file-reference
-   validation) run through the same code's passthrough form only when the
-   user confirms the dataset has the attributes they assume.
-4. Stages whose input and output are not tabular (images, tar shards,
+   validation) run the same way only when the user confirms the dataset has
+   the attributes they assume.
+5. Stages whose input and output are not tabular (images, tar shards,
    model-ready tensors) keep the generic check rule; do not wrap them in an
    AIDRIN call.
 """

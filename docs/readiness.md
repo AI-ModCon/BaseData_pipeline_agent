@@ -1,6 +1,6 @@
 # Readiness Gate
 
-DSAgt can run [AIDRIN](https://github.com/idtlab/AIDRIN) (AI Data Readiness Inspector) as the check code before and after every pipeline stage. The gate is an opt-in at `dsagt init`; off by default.
+DSAgt can run [AIDRIN](https://github.com/idtlab/AIDRIN) (AI Data Readiness Inspector) as the check before and after every pipeline stage. The `aidrin` skill is installed in every project from the AIDRIN repository whether or not the gate is on; the gate makes the agent apply it at every tabular stage. The gate is an opt-in at `dsagt init`; off by default.
 
 The pipeline-builder instructions already require a paired check around every data operation, with reports in `audit/`. Without the gate, the agent writes its own check code for each stage. With it, the check for any tabular stage is a fixed AIDRIN metric set, so every stage of a pipeline is measured the same way and the before/after delta is comparable across stages and projects.
 
@@ -8,11 +8,10 @@ The pipeline-builder instructions already require a paired check around every da
 
 Answer **yes** to "Enable the AIDRIN readiness gate?" in the `dsagt init` menu. (The automation path is `dsagt init <name> --agent <agent> --readiness aidrin`, with `--readiness-executable PATH` to use an AIDRIN you already installed.)
 
-Init then does three things:
+Init then does two things:
 
 1. Installs AIDRIN once into `~/dsagt-projects/.tools/aidrin/` (a venv built with `uv`; AIDRIN requires Python 3.10-3.12). Every project shares it. A failed install is reported and the config still records the expected path; re-run `dsagt init` to retry.
-2. Copies the bundled `aidrin` code into `<project>/codes/aidrin/`, so the registry has it from the first session and every run goes through `dsagt-run`.
-3. Appends a short block to the agent's instructions file stating that `check_[X]` for tabular stages is an AIDRIN gate run.
+2. Appends a short block to the agent's instructions file stating that `check_[X]` for tabular stages is an AIDRIN run of the project's metric profile, naming the executable and the `aidrin` skill in `<project>/skills/aidrin/`.
 
 The config records the choice:
 
@@ -25,20 +24,23 @@ readiness:
 
 ## Rules the agent follows
 
-1. Before and after each operation on a tabular file (CSV, Excel, JSON, HDF5, Parquet, npz), run the `aidrin` code's `gate` subcommand on that file with the project profile. Reports go to `audit/step_N_pre.aidrin.json` and `audit/step_N_post.aidrin.json`.
-2. After the post-run, report the per-metric change to the user before proposing the next step.
-3. Do not write a custom check for a metric AIDRIN provides.
-4. Metrics outside the profile (fairness rates, privacy, file-reference validation) run through the same code's passthrough form only when the user confirms the dataset has the attributes those metrics assume.
-5. Stages whose input and output are not tabular keep the generic check rule.
+Every `aidrin` command in the project, gate run or not, goes through `dsagt-run --code aidrin` so it is recorded; the AIDRIN MCP tools are not wired in, so the agent uses the CLI path.
+
+1. Before and after each operation on a tabular file (CSV, Excel, JSON, HDF5, Parquet, npz), run every metric of the project profile on that file, one `aidrin run <metric> <file>` per metric, each wrapped by `dsagt-run --code aidrin` so it is recorded. Collected reports go to `audit/step_N_pre.aidrin.json` and `audit/step_N_post.aidrin.json`.
+2. The gate is fixed: gate runs skip the skill's intent-elicitation and plan-confirmation steps. The skill's full workflow is for readiness assessments the user asks for beyond the profile.
+3. After the post-run, report the per-metric change to the user before proposing the next step.
+4. Do not write a custom check for a metric AIDRIN provides.
+5. Metrics outside the profile (fairness rates, privacy, file-reference validation) run the same way only when the user confirms the dataset has the attributes those metrics assume.
+6. Stages whose input and output are not tabular keep the generic check rule.
 
 ## Profiles
 
-| Profile | Metrics | Required gate options |
+| Profile | Metrics | Column arguments |
 |---|---|---|
 | `quality` (default) | completeness, duplicity, outliers | none |
-| `supervised` | quality + class-imbalance, feature-relevance | `--target`; `--categorical` and/or `--numerical` |
+| `supervised` | quality + class-imbalance, feature-relevance | the target column; categorical and numerical column lists for feature-relevance |
 
-Set `readiness.profile` in `.dsagt/config.yaml` to change the default; the agent can pass `--profile` per stage.
+Set `readiness.profile` in `.dsagt/config.yaml` to change the profile.
 
 ## Try it
 
@@ -83,7 +85,7 @@ the next step. Expected values on this dataset (pre column measured directly):
 | 3 outliers | outliers (`temperature`) | 0.0225 | lower |
 
 Afterwards, `ls ~/dsagt-projects/gate-demo/audit` shows the six reports and `trace_archive/`
-holds one record per gate run and per operation. Clean up with `dsagt rm gate-demo -y`.
+holds one record per metric of each gate run and one per operation. Clean up with `dsagt rm gate-demo -y`.
 
 ## Demos
 

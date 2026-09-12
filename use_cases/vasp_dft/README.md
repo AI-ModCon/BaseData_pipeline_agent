@@ -22,7 +22,7 @@ order: 30
 through both of DSAgt's extension mechanisms:
 
 1. **Skills.** The agent discovers the external skill sources, syncs the K-Dense
-   catalog, installs its `pymatgen` skill, and uses the built-in `skill-creator`
+   catalog, installs its `pymatgen` skill, and uses the `skill-creator` base skill
    to author a `vasp-to-isaac` skill whose converter parses VASP output with
    `pymatgen.io.vasp`. It runs that skill on a small slab calculation.
 2. **Codes.** The agent extends its skill with a converter for nudged-elastic-band
@@ -77,7 +77,7 @@ tar xzf neb_fixture.tar.gz -C "$PROJ/data" --strip-components=1 isaac_vasp/neb i
 curl -L "https://drive.usercontent.google.com/download?id=19PNObF-FZkGITNJ_VIZH8j9BHWSqRPrH&export=download&confirm=t" -o slab_fixture.tar.gz
 tar xzf slab_fixture.tar.gz -C "$PROJ/data" --strip-components=2 isaac_skills_demo/mock_data
 # $PROJ/data now holds neb/, isaac_neb_record.json, mock_slab/, expected_isaac_record.json
-dsagt start isaac-vasp                        # mirrors the built-in skill-creator into the agent's native skills dir
+dsagt start isaac-vasp                        # mirrors the skill-creator base skill into the agent's native skills dir
 ```
 
 ## Execution
@@ -93,7 +93,8 @@ Do you have a skill available for scaffolding new skills? Name it and give me a 
 ```
 
 **Expect:** the agent names **`skill-creator`** and summarizes it — discovered
-natively, with no MCP call. `dsagt start` mirrored the built-in skill into the
+natively, with no MCP call. `dsagt init` installed the skill from the genesis
+catalog and `dsagt start` mirrored it into the
 agent's native skills directory, so the agent sees its name and description like
 any native skill and loads the full `SKILL.md` only when it is invoked.
 `search_skills` is for the not-yet-installed catalog only, so it should not fire here.
@@ -213,7 +214,7 @@ Confirm from a shell (the native skills directory is `.claude/skills/` for Claud
 
 ```bash
 dsagt info isaac-vasp                     # KB shows the k-dense-ai catalog collection
-ls "$PROJ/skills/"                        # pymatgen  vasp-to-isaac
+ls "$PROJ/skills/"                        # aidrin  pymatgen  skill-creator  vasp-to-isaac
 ls "$PROJ/codes/"                         # vasp-neb-to-isaac
 ls "$PROJ/audit/" "$PROJ/trace_archive/"
 ```
@@ -240,7 +241,7 @@ ls "$PROJ/audit/" "$PROJ/trace_archive/"
 
 | DSAgt Capability | Steps |
 |------------------|-------|
-| Native discovery of the built-in `skill-creator` | 1 |
+| Native discovery of the `skill-creator` base skill | 1 |
 | Skill-source listing and in-session sync (`list_skill_sources`, `add_skill_source`) | 2, 3 |
 | Catalog search and install (`search_skills`, `install_skill`) | 4 |
 | Skill authoring with `skill-creator` and `save_skill` | 5 |

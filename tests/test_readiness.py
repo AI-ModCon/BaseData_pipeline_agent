@@ -1,24 +1,10 @@
-"""Readiness gate: config block, install, instructions, and the bundled launcher."""
+"""Readiness gate: config block, install, and the instructions block."""
 
-import json
-import os
 import subprocess
-import sys
-from pathlib import Path
 
 import pytest
 
 from dsagt import readiness as rd
-
-LAUNCHER = (
-    Path(__file__).parent.parent
-    / "src"
-    / "dsagt"
-    / "codes"
-    / "aidrin"
-    / "scripts"
-    / "aidrin.py"
-)
 
 
 class TestConfigBlock:
@@ -87,106 +73,16 @@ class TestEnsureAidrin:
 
 class TestInstructionsBlock:
 
-    def test_carries_marker_profile_and_metrics(self):
-        text = rd.instructions_block(rd.readiness_block("aidrin", profile="quality"))
+    def test_carries_marker_profile_metrics_and_executable(self, tmp_path):
+        block = rd.readiness_block(
+            "aidrin", executable=tmp_path / "aidrin", profile="quality"
+        )
+        text = rd.instructions_block(block)
         assert rd.READINESS_MARKER in text
         assert "`quality`: completeness, duplicity, outliers" in text
         assert "audit/step_N_pre.aidrin.json" in text
+        # The agent runs the installed ``aidrin`` skill's CLI through dsagt-run.
+        assert f"dsagt-run --code aidrin -- {tmp_path / 'aidrin'} run" in text
+        assert "skills/aidrin/" in text
         # The marker must not collide with the master-instructions marker.
         assert "DSAgt Pipeline Builder" not in text
-
-
-# ---------------------------------------------------------------------------
-# The bundled launcher, driven end-to-end with a fake ``aidrin`` executable.
-# ---------------------------------------------------------------------------
-
-FAKE_AIDRIN = """#!/usr/bin/env python3
-import json, sys
-args = sys.argv[1:]
-if args[0] == "run":
-    print(json.dumps({"metric": args[1], "file": args[2], "extra": args[3:]}))
-elif args[0] == "list":
-    print(json.dumps({"data-quality": []}))
-else:
-    sys.exit("unknown")
-"""
-
-
-@pytest.fixture
-def project(tmp_path):
-    """A project dir with a readiness block pointing at a fake aidrin."""
-    exe = tmp_path / "fake-aidrin"
-    exe.write_text(FAKE_AIDRIN)
-    exe.chmod(0o755)
-    pdir = tmp_path / "proj"
-    (pdir / ".dsagt").mkdir(parents=True)
-    (pdir / ".dsagt" / "config.yaml").write_text(
-        "project: p\nagent: claude\nreadiness:\n  tool: aidrin\n"
-        f"  executable: {exe}\n  profile: quality\n"
-    )
-    (pdir / "data.csv").write_text("a\n1\n")
-    return pdir
-
-
-def run_launcher(pdir: Path, *args: str, env: dict | None = None):
-    return subprocess.run(
-        [sys.executable, str(LAUNCHER), *args],
-        cwd=pdir,
-        capture_output=True,
-        text=True,
-        env={**os.environ, **(env or {})},
-    )
-
-
-class TestLauncher:
-
-    def test_gate_runs_profile_and_writes_report(self, project):
-        proc = run_launcher(
-            project, "gate", "data.csv", "--report", "audit/step_1_pre.aidrin.json"
-        )
-        assert proc.returncode == 0, proc.stderr
-        report = json.loads(proc.stdout)
-        assert list(report["metrics"]) == ["completeness", "duplicity", "outliers"]
-        assert report["metrics"]["outliers"]["file"] == "data.csv"
-        on_disk = json.loads((project / "audit" / "step_1_pre.aidrin.json").read_text())
-        assert on_disk == report
-
-    def test_supervised_profile_passes_column_arguments(self, project):
-        proc = run_launcher(
-            project,
-            "gate",
-            "data.csv",
-            "--profile",
-            "supervised",
-            "--target",
-            "label",
-            "--numerical",
-            "a,b",
-        )
-        assert proc.returncode == 0, proc.stderr
-        metrics = json.loads(proc.stdout)["metrics"]
-        assert metrics["class-imbalance"]["extra"] == ["label"]
-        assert metrics["feature-relevance"]["extra"] == ["", "a,b", "label"]
-
-    def test_supervised_without_target_fails_clearly(self, project):
-        proc = run_launcher(project, "gate", "data.csv", "--profile", "supervised")
-        assert proc.returncode != 0
-        assert "requires --target" in proc.stderr
-
-    def test_passthrough_and_report(self, project):
-        proc = run_launcher(project, "--report", "audit/list.json", "list")
-        assert proc.returncode == 0, proc.stderr
-        assert json.loads(proc.stdout) == {"data-quality": []}
-        assert (project / "audit" / "list.json").exists()
-
-    def test_env_override_wins_over_config(self, project, tmp_path):
-        other = tmp_path / "other-aidrin"
-        other.write_text(FAKE_AIDRIN.replace('"data-quality"', '"env"'))
-        other.chmod(0o755)
-        proc = run_launcher(project, "list", env={"DSAGT_AIDRIN_BIN": str(other)})
-        assert json.loads(proc.stdout) == {"env": []}
-
-    def test_missing_config_fails_clearly(self, tmp_path):
-        proc = run_launcher(tmp_path, "list")
-        assert proc.returncode != 0
-        assert "DSAGT_AIDRIN_BIN" in proc.stderr

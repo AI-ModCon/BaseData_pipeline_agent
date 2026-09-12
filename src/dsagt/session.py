@@ -89,7 +89,7 @@ DEFAULTS = {
         "sources": [
             {
                 "name": "genesis",
-                "url": "https://gitlab.osti.gov/genesis/genesis-skills",
+                "url": "https://github.com/AI-ModCon/genesis-skills",
                 "branch": "main",
                 "subdir": "skills",
             },
@@ -588,6 +588,26 @@ def _provision_kb(
         print("  Knowledge base ready.", flush=True)
 
 
+def _provision_base_skills(pdir: Path) -> None:
+    """Install the base skills (``skills.BASE_SKILLS``) from their upstream
+    repositories into ``<project>/skills/``.
+
+    A failed fetch is printed, not raised: the project works without the
+    skills, and a re-run of ``dsagt init`` installs them once the network
+    is available.
+    """
+    from dsagt.skills import install_base_skills
+
+    try:
+        install_base_skills(pdir)
+    except Exception as e:  # noqa: BLE001 — offline init must still complete
+        print(
+            f"  Warning: could not install the base skills ({e}).  Re-run "
+            "`dsagt init` with network access to install them.",
+            flush=True,
+        )
+
+
 def _provision_readiness(readiness: dict) -> None:
     """Install the readiness tool the project opted into (one-time, shared).
 
@@ -664,8 +684,9 @@ def init_project(
     # the user hasn't touched; edited/overridden dirs are never clobbered.
     from dsagt.registry import CodeRegistry
 
-    optional = frozenset({readiness["tool"]}) if readiness else frozenset()
-    CodeRegistry(runtime_dir=pdir).ensure_bundled_copies(optional=optional)
+    CodeRegistry(runtime_dir=pdir).ensure_bundled_copies()
+
+    _provision_base_skills(pdir)
 
     if readiness:
         _provision_readiness(readiness)

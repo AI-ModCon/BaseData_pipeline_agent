@@ -63,25 +63,25 @@ cp AIDRIN/examples/sample_data/csv/adult.csv "$PROJ/data/"
 dsagt start aidrin-tour
 ```
 
-The readiness gate copies the `aidrin` code into `$PROJ/codes/aidrin/` and records the
-executable in `.dsagt/config.yaml`.
+Every init installs the `aidrin` skill into `$PROJ/skills/aidrin/`; the readiness gate
+records the executable in `.dsagt/config.yaml` and adds the gate rules to the instructions.
 
 ## Execution
 
 Paste these prompts one at a time.
 
-### 1. Confirm the AIDRIN code is registered
+### 1. Confirm the AIDRIN skill is installed
 
 ```text
-Search the registry for the aidrin data-readiness code and list its metrics.
+Using the aidrin skill, list the readiness metrics AIDRIN provides.
 ```
 
-**Verify:** the agent finds `codes/aidrin/SKILL.md` and runs the code's `list` subcommand.
+**Verify:** the agent reads `skills/aidrin/SKILL.md` and its `reference/metrics.md` and lists the metrics by category; it may also run `aidrin list` through `dsagt-run`.
 
 ### 2. Run the metrics
 
 ```text
-Using the registry aidrin code, run a readiness assessment on data/adult.csv. Cover these
+Using the aidrin skill, run a readiness assessment on data/adult.csv. Cover these
 four categories:
 (1) data-quality: completeness, duplicity, outliers;
 (2) impact-of-data-on-AI: correlations on "age,education.num,sex,race", and feature-relevance with
@@ -145,11 +145,11 @@ quasi-identifiers — bin or suppress before sharing.
 ```text
 Write an aidrin batch config (YAML) that runs completeness, class-imbalance, statistical-rates, and
 representation-rate on data/adult.csv with target income and sensitive attribute sex, then run it
-through the registry aidrin code.
+with the aidrin skill through dsagt-run.
 ```
 
-The config is one flat mapping, not per-metric blocks; the `aidrin` code's
-`SKILL.md` documents the keys. For this step:
+The config is one flat mapping, not per-metric blocks; the `aidrin` skill's
+`reference/metrics.md` documents the keys. For this step:
 
 ```yaml
 file-path: data/adult.csv
@@ -180,7 +180,7 @@ Reconstruct the full readiness assessment you just ran from the execution record
 
 ## Post-Conditions
 
-1. Code registry contains the `aidrin` spec (`codes/aidrin/SKILL.md`).
+1. `skills/aidrin/SKILL.md` is present, with a `PROVENANCE.txt` naming the AIDRIN source.
 2. `trace_archive/` holds one execution record per metric run from step 2.
 3. Results span the four categories, with the gender-fairness gap and the `k = 1` / `l = 1`
    re-identification risks identified.
@@ -192,8 +192,8 @@ Reconstruct the full readiness assessment you just ran from the execution record
 
 | DSAgt Capability | Steps |
 |------------------|-------|
-| Readiness gate placing the `aidrin` code at init | Setup |
-| Registry search | 1 |
+| The `aidrin` base skill installed at init; the readiness gate enabled | Setup |
+| Base-skill use: the `aidrin` CLI through `dsagt-run` | 1 |
 | Code execution with provenance (execution records in `trace_archive/`) | 2 |
 | Multi-metric orchestration | 2 |
 | Multi-metric / batch execution | 3 |
