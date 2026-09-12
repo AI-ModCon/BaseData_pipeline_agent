@@ -7,7 +7,7 @@ stays searchable without being copied locally or held in the agent's context
 (you can't hold thousands of skill descriptions in context), while an
 *installed* skill is copied into ``<project>/skills/<name>/`` and mirrored into
 the agent's native skills dir (``agents.base.setup_skills``).  It backs the MCP
-``search_skills`` tool and the ``dsagt skills`` CLI through the one
+``search_skills`` / ``add_skill_source`` tools and ``dsagt init`` through the one
 :class:`SkillRouter` facade, so search/install policy can't diverge between them.
 Design-wise it stays cheap and degradable: :class:`SkillsCatalog` composes over
 the host server's :class:`~dsagt.knowledge.KnowledgeBase` (shared embedder, no
@@ -238,9 +238,8 @@ def persist_source_to_config(project_dir: str | Path, spec: dict) -> bool:
 
     Dedupes by URL.  Returns True if the config was updated.  No-op (returns
     False) if the config file is missing — the catalog is still indexed
-    either way.  Used by both the ``add_skill_source`` MCP tool and the
-    ``dsagt skills add`` CLI so a CLI-added source is re-synced by a later
-    config-driven ``dsagt skills sync``.
+    either way.  Used by the ``add_skill_source`` MCP tool so the project
+    config records every enabled source.
     """
     cfg_path = Path(project_dir) / ".dsagt" / "config.yaml"
     if not cfg_path.exists():
@@ -417,9 +416,8 @@ def find_catalog_skill(name: str, *, cache_dir: Path = SKILL_SOURCES_DIR) -> Pat
     must be unique across the machine-global clone cache; when the same name
     exists in more than one synced source, pass a **source-qualified**
     ``<slug>/<name>`` (the slug is the per-source cache dir / catalog-collection
-    suffix, as shown by ``list_skill_sources`` / ``dsagt skills list
-    --catalog``) to pick one.  Raises on no match or on a still-ambiguous bare
-    name.
+    suffix, as shown by ``list_skill_sources``) to pick one.  Raises on no
+    match or on a still-ambiguous bare name.
     """
     source_filter: str | None = None
     skill = name
@@ -439,8 +437,8 @@ def find_catalog_skill(name: str, *, cache_dir: Path = SKILL_SOURCES_DIR) -> Pat
     if not matches:
         where = f" in source '{source_filter}'" if source_filter else ""
         raise LookupError(
-            f"No catalog skill named '{skill}'{where}. Run 'dsagt skills sync' "
-            f"or add_skill_source first, then search_skills to find one."
+            f"No catalog skill named '{skill}'{where}. Run add_skill_source "
+            f"first, then search_skills to find one."
         )
     # Collapse matches that point at the same source repo (slug = first path
     # part under cache_dir); ambiguity only matters across different sources.

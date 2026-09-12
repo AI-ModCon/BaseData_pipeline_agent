@@ -237,6 +237,21 @@ class TestSkillSources:
         assert result["other_synced_collections"] == []
         assert "k-dense-ai" in result["note"]
 
+    def test_add_skill_source_passes_force_to_sync(self, mock_kb, monkeypatch):
+        calls = []
+
+        def fake_sync(self, source, *, force=False):
+            calls.append((source, force))
+            return {"slug": "k-dense-ai-scientific-agent-skills", "indexed": 1}
+
+        monkeypatch.setattr("dsagt.skills.SkillRouter.sync", fake_sync)
+        server = create_skill_server(kb=mock_kb)
+        call_tool_json(server, "add_skill_source", {"source": "k-dense-ai"})
+        call_tool_json(
+            server, "add_skill_source", {"source": "k-dense-ai", "force": True}
+        )
+        assert calls == [("k-dense-ai", False), ("k-dense-ai", True)]
+
     def test_add_skill_source_bad_source_errors(self, mock_kb):
         server = create_skill_server(kb=mock_kb)
         result = call_tool_json(

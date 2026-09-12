@@ -22,7 +22,7 @@ Skills fall into two sets — the searchable **corpus** and the project's **inst
 
 ## Sources
 
-`dsagt init` enables the `genesis` source by default. The others are enabled at init (the interactive checkbox, or `--include <name>`) or during a session with the `add_skill_source` tool, which also accepts any git URL. A source is a git repository holding `SKILL.md` directories; discovery is recursive under the configured subdirectory.
+`dsagt init` enables the `genesis` source by default. The others are enabled at init (the interactive checkbox, or `--include <name>`) or during a session with the `add_skill_source` tool, which also accepts any git URL. A source is a git repository holding `SKILL.md` directories; discovery is recursive under the configured subdirectory, so a skill added upstream appears after the source is re-synced: `add_skill_source` with `force: true` re-clones a cached source.
 
 | Name | Repository | Contents |
 |---|---|---|
