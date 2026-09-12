@@ -316,8 +316,9 @@ def _skill_tools_and_handlers(
         types.Tool(
             name="add_skill_source",
             description=(
-                "Enable an external agent-skill source (a known name like "
-                "'k-dense-ai'/'anthropic'/'antigravity'/'composio', or a GitHub URL). "
+                "Enable an external agent-skill source (a known name: "
+                "'genesis', 'aidrin', 'k-dense-ai', 'anthropic', 'antigravity', "
+                "'composio'; or a git URL on any host). "
                 "Clones it and indexes its skills into the searchable catalog "
                 "(search_skills). Does NOT load them into context."
             ),
