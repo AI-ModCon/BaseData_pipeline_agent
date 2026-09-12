@@ -51,6 +51,25 @@ uv run mkdocs serve             # live preview at http://127.0.0.1:8000
 uv run mkdocs build --strict    # what CI runs
 ```
 
+## Trace pipeline in another application
+
+`make_trace_collector` builds the reader, translator, and MLflow sink for one
+agent session. Its positional arguments are the agent name, the project
+directory, the MLflow experiment name, the session id, and the tracking URI
+(dsagt's own is `sqlite:///<project_dir>/mlflow.db`). Two keyword arguments
+exist for an application that runs the pipeline over sessions dsagt did not
+start:
+
+- `sessions_root` points the Codex and Cline readers at a transcript directory
+  other than their default, for example the agent's global `~/.codex/sessions`.
+  `projects_root` is the Claude equivalent.
+- `ack_dir` is where the per-consumer ack files are written, resolved against
+  the project directory; an absolute path is used as given. dsagt writes them
+  under `.dsagt`.
+
+Every trace the sink writes carries `dsagt.agent` and `dsagt.trace_id` in its
+metadata.
+
 ## Codebase orientation
 
 The [Architecture](architecture.md) page is the map of the system — the
