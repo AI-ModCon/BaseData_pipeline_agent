@@ -703,17 +703,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#sources" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Sources
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#built-in-and-authored-skills" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1276,17 +1265,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#sources" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Sources
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#built-in-and-authored-skills" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1335,7 +1313,7 @@
 <p><img alt="DSAgt skill routing" src="../assets/skills-routing.png" /></p>
 <p>Skills fall into two sets — the searchable <strong>corpus</strong> and the project's <strong>installed skills</strong> — and a single MCP service, the <strong>SkillRouter</strong>, routes every skill operation between them:</p>
 <ul>
-<li><strong>Corpus</strong> — skills that exist in external repositories but are <em>not yet installed</em>. DSAgt federates many sources (the known names below, or any git URL); each is cloned and indexed into its own collection. The agent browses the corpus with <code>search_skills</code> and manages sources with <code>add_skill_source</code> / <code>list_skill_sources</code>.</li>
+<li><strong>Corpus</strong> — skills that exist in external repositories but are <em>not yet installed</em>. DSAgt federates many sources (<code>k-dense-ai</code>, <code>anthropic</code>, <code>antigravity</code>, <code>composio</code>, <code>genesis</code>, or any git URL); each is cloned and indexed into its own collection. The agent browses the corpus with <code>search_skills</code> and manages sources with <code>add_skill_source</code> / <code>list_skill_sources</code>.</li>
 <li><strong>Installed skills</strong> — skills drawn into the project's <code>&lt;project&gt;/skills/</code> directory, either installed from the corpus (<code>install_skill</code>) or authored in place (e.g. with the built-in <code>skill-creator</code>). These are mirrored into each agent's <em>native</em> skills directory (<code>.claude/</code>, <code>.agents/</code>, <code>.cline/</code>) at install time (and re-mirrored at <code>dsagt init</code>/<code>start</code>), where the agent auto-discovers and auto-invokes them.</li>
 </ul>
 <h2 id="design-motivation">Design motivation<a class="headerlink" href="#design-motivation" title="Permanent link">&para;</a></h2>
@@ -1348,45 +1326,6 @@
 <p><strong>Federated and provenance-preserving.</strong> Each source is an independent per-source collection, so re-syncing one never disturbs another; installing a skill from the corpus preserves its upstream <code>LICENSE</code>/<code>NOTICE</code> and stamps a <code>PROVENANCE.txt</code> into the installed directory.</p>
 </li>
 </ul>
-<h2 id="sources">Sources<a class="headerlink" href="#sources" title="Permanent link">&para;</a></h2>
-<p><code>dsagt init</code> enables the <code>genesis</code> source by default. The others are enabled at init (the interactive checkbox, or <code>--include &lt;name&gt;</code>) or during a session with the <code>add_skill_source</code> tool, which also accepts any git URL. A source is a git repository holding <code>SKILL.md</code> directories; discovery is recursive under the configured subdirectory, so a skill added upstream appears after the source is re-synced: <code>add_skill_source</code> with <code>force: true</code> re-clones a cached source.</p>
-<table>
-<thead>
-<tr>
-<th>Name</th>
-<th>Repository</th>
-<th>Contents</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>genesis</code> (default)</td>
-<td><code>gitlab.osti.gov/genesis/genesis-skills</code>, <code>skills/</code></td>
-<td>HPC job and site skills (<code>slurm</code>, <code>pbs</code>, <code>perlmutter</code>, <code>aurora</code>, <code>frontier</code>); ModCon data skills (<code>datacard-generator</code>, <code>croissant-validator</code>, <code>hdmf-schema-builder</code>); plasma simulation (<code>gkeyll</code>, <code>gs2</code>); vendor skill sets from Anthropic, OpenAI, HuggingFace, LangChain, and superpowers; <code>academy</code>, <code>literature-search</code>. 70+ skills.</td>
-</tr>
-<tr>
-<td><code>k-dense-ai</code></td>
-<td><code>github.com/K-Dense-AI/scientific-agent-skills</code></td>
-<td>140+ chemistry, biology, medicine, and materials skills.</td>
-</tr>
-<tr>
-<td><code>anthropic</code></td>
-<td><code>github.com/anthropics/skills</code>, <code>skills/</code></td>
-<td>Anthropic document-editing and design skills.</td>
-</tr>
-<tr>
-<td><code>antigravity</code></td>
-<td><code>github.com/sickn33/antigravity-awesome-skills</code></td>
-<td>1,500+ cross-platform agent skills.</td>
-</tr>
-<tr>
-<td><code>composio</code></td>
-<td><code>github.com/ComposioHQ/awesome-claude-skills</code></td>
-<td>Workflow skills for SaaS applications.</td>
-</tr>
-</tbody>
-</table>
-<p>The <code>genesis</code> source is the ModCon aggregation point: skills contributed by other ModCon and AmSC teams (Globus Compute, IRI API, data movement) land there and become searchable on the next sync.</p>
 <h2 id="built-in-and-authored-skills">Built-in and authored skills<a class="headerlink" href="#built-in-and-authored-skills" title="Permanent link">&para;</a></h2>
 <p>DSAgt provides a <code>skill-creator</code> skill (for scaffolding new <code>SKILL.md</code> skills). Built-in and installed skills are <strong>not</strong> indexed for search — the agent auto-discovers <code>SKILL.md</code> folders natively — so <code>search_skills</code> is reserved for the corpus. Domain skills, including the MODCON <code>datacard-generator</code>, are sourced from the external corpus rather than built in, so they stay current upstream.</p>
 <p>To manually add a skill, place a new directory under <code>&lt;project&gt;/skills/</code> with a <code>SKILL.md</code> describing the workflow; the next <code>dsagt start</code> mirrors it into the agent's native skill directory, after which the agent auto-discovers and invokes it — no indexing step.</p>

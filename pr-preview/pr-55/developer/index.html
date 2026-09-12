@@ -1202,10 +1202,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#using-dsagt-as-a-dependency" class="md-nav__link">
+  <a href="#trace-pipeline-in-another-application" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Using dsagt as a dependency
+        Trace pipeline in another application
       
     </span>
   </a>
@@ -1313,10 +1313,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#using-dsagt-as-a-dependency" class="md-nav__link">
+  <a href="#trace-pipeline-in-another-application" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Using dsagt as a dependency
+        Trace pipeline in another application
       
     </span>
   </a>
@@ -1373,8 +1373,8 @@ mechanics (branch/PR flow, commit style), see
 <p>DSAgt develops on <a href="https://github.com/astral-sh/uv">uv</a> with Python 3.12 or 3.13:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/AI-ModCon/dsagt.git
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nb">cd</span><span class="w"> </span>dsagt
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>uv<span class="w"> </span>sync<span class="w"> </span>--all-groups<span class="w"> </span>--all-extras<span class="w">   </span><span class="c1"># runtime + all extras + dev + docs dependencies</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="nb">source</span><span class="w"> </span>.venv/bin/activate<span class="w">           </span><span class="c1"># so dsagt / dsagt-run / dsagt-server are on PATH</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>uv<span class="w"> </span>sync<span class="w"> </span>--all-groups<span class="w">          </span><span class="c1"># runtime + dev + docs dependencies</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="nb">source</span><span class="w"> </span>.venv/bin/activate<span class="w">      </span><span class="c1"># so dsagt / dsagt-run / dsagt-server are on PATH</span>
 </code></pre></div>
 <h2 id="tests">Tests<a class="headerlink" href="#tests" title="Permanent link">&para;</a></h2>
 <p>Use <code>python -m pytest</code>, not bare <code>pytest</code> (the bare binary can resolve the wrong
@@ -1399,66 +1399,23 @@ site with <code>--strict</code> on every PR and deploys it to GitHub Pages from 
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>uv<span class="w"> </span>run<span class="w"> </span>mkdocs<span class="w"> </span>serve<span class="w">             </span><span class="c1"># live preview at http://127.0.0.1:8000</span>
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>uv<span class="w"> </span>run<span class="w"> </span>mkdocs<span class="w"> </span>build<span class="w"> </span>--strict<span class="w">    </span><span class="c1"># what CI runs</span>
 </code></pre></div>
-<h2 id="using-dsagt-as-a-dependency">Using dsagt as a dependency<a class="headerlink" href="#using-dsagt-as-a-dependency" title="Permanent link">&para;</a></h2>
-<p>dsagt's parts install piecewise: the core distribution depends only on
-<code>pyyaml</code>, <code>httpx</code>, <code>jsonschema</code>, and <code>mcp</code>, and each concern's heavy
-dependencies sit behind an extra. A downstream project declares the one it
-uses:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">dependencies</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">"dsagt[traces]&gt;=0.2"</span><span class="p">]</span>
-</code></pre></div>
-<table>
-<thead>
-<tr>
-<th>Extra</th>
-<th>Adds</th>
-<th>Enables</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>traces</code></td>
-<td>mlflow</td>
-<td>the trace pipeline's MLflow sink</td>
-</tr>
-<tr>
-<td><code>kb</code></td>
-<td>chromadb, sentence-transformers, llama-index, numpy, rank-bm25, …</td>
-<td>the knowledge base</td>
-</tr>
-<tr>
-<td><code>cli</code></td>
-<td>questionary</td>
-<td>the interactive <code>dsagt init</code> menus</td>
-</tr>
-<tr>
-<td><code>all</code></td>
-<td>all of the above</td>
-<td>running dsagt itself (<code>dsagt init</code>, the MCP server, the CLI)</td>
-</tr>
-</tbody>
-</table>
-<p>The import paths match the extras, and every subpackage imports on a core-only
-install (a lazy import that needs a missing extra raises <code>ImportError</code> naming
-it):</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">dsagt.traces</span><span class="w"> </span><span class="kn">import</span> <span class="n">make_trace_collector</span><span class="p">,</span> <span class="n">MLflowSink</span>   <span class="c1"># dsagt[traces]</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">dsagt.knowledge</span><span class="w"> </span><span class="kn">import</span> <span class="n">KnowledgeBase</span>                    <span class="c1"># dsagt[kb]</span>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">dsagt.skills</span><span class="w"> </span><span class="kn">import</span> <span class="n">SkillsCatalog</span><span class="p">,</span> <span class="n">install_into_project</span> <span class="c1"># core only</span>
-</code></pre></div>
-<p>The trace pipeline's embedding points:</p>
+<h2 id="trace-pipeline-in-another-application">Trace pipeline in another application<a class="headerlink" href="#trace-pipeline-in-another-application" title="Permanent link">&para;</a></h2>
+<p><code>make_trace_collector</code> builds the reader, translator, and MLflow sink for one
+agent session. Its positional arguments are the agent name, the project
+directory, the MLflow experiment name, the session id, and the tracking URI
+(dsagt's own is <code>sqlite:///&lt;project_dir&gt;/mlflow.db</code>). Two keyword arguments
+exist for an application that runs the pipeline over sessions dsagt did not
+start:</p>
 <ul>
-<li><code>make_trace_collector(agent, project_dir, project, session_id, tracking_uri)</code>
-  — <code>project</code> is the MLflow experiment name and <code>tracking_uri</code> the store
-  (dsagt's own is <code>sqlite:///&lt;project_dir&gt;/mlflow.db</code>).</li>
-<li><code>ack_dir=</code> (default <code>.dsagt</code>, resolved against <code>project_dir</code>) — where the
-  per-consumer ack files land, so an application keeps trace state beside its
-  own state directory.</li>
-<li>Every trace the sink writes carries <code>dsagt.agent</code> (the agent platform) and
-  <code>dsagt.trace_id</code> (the per-turn idempotency key) in its metadata —
-  attribution in the store itself.</li>
+<li><code>sessions_root</code> points the Codex and Cline readers at a transcript directory
+  other than their default, for example the agent's global <code>~/.codex/sessions</code>.
+  <code>projects_root</code> is the Claude equivalent.</li>
+<li><code>ack_dir</code> is where the per-consumer ack files are written, resolved against
+  the project directory; an absolute path is used as given. dsagt writes them
+  under <code>.dsagt</code>.</li>
 </ul>
-<p>The <code>import-leaf</code> CI job installs the core with no extras and imports every
-subpackage, then installs each extra alone and imports its concern — the
-guarantee these import paths rely on.</p>
+<p>Every trace the sink writes carries <code>dsagt.agent</code> and <code>dsagt.trace_id</code> in its
+metadata.</p>
 <h2 id="codebase-orientation">Codebase orientation<a class="headerlink" href="#codebase-orientation" title="Permanent link">&para;</a></h2>
 <p>The <a href="../architecture/">Architecture</a> page is the map of the system — the
 capabilities, the single <code>dsagt-server</code> MCP layout, and the observability and
@@ -1469,10 +1426,10 @@ repo); read it before a substantial change.</p>
 <p><strong>Agent command not found.</strong> The agent CLI isn't installed or isn't on PATH —
 see the <a href="../#supported-agents">supported agents</a>.</p>
 <p><strong>MCP server not connecting.</strong> Confirm the entry point resolves:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>uv<span class="w"> </span>run<span class="w"> </span>which<span class="w"> </span>dsagt-server
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>uv<span class="w"> </span>run<span class="w"> </span>which<span class="w"> </span>dsagt-server
 </code></pre></div>
 <p>If it's missing, reinstall:
-<code>pip install --force-reinstall "dsagt[all] @ git+https://github.com/AI-ModCon/dsagt.git"</code>.</p>
+<code>pip install --force-reinstall "git+https://github.com/AI-ModCon/dsagt.git"</code>.</p>
 
 
 
