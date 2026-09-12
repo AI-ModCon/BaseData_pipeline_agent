@@ -88,3 +88,25 @@ Rejected: keeping design notes as a fourth document class. A note that mixes
 built mechanism, decisions, and open items drifts on all three.
 Consequence: `history/parked/2026-09-11-design-notes/design-notes/`.
 Commits: 11966be
+
+## 2026-09-12 All of dsagt installs by default
+
+Context: the 2026-09-10 split put the retrieval stack, mlflow, and questionary
+behind extras and moved four modules into package directories. The anticipated
+client, NeuroMANCER Studio, uses the knowledge base, which needs the whole
+retrieval stack, so the extras saved it nothing, and each package directory
+held one file. What blocked installing dsagt beside another project was the
+exact pins on mlflow, sentence-transformers, and transformers.
+Decision: one dependency list, every entry a range with a next-major cap,
+`uv.lock` tracked; `pip install dsagt` installs all of it, and a downstream
+project pins a tag. `knowledge.py`, `memory.py`, `registry.py`, `skills.py`,
+and `traces.py` stay single modules. `make_trace_collector` keeps
+`sessions_root` and `ack_dir`, and the MLflow sink keeps cache token counts.
+Rejected: extras with `[all]` as the documented install (a bare install could
+not run `dsagt init`); two distributions in the mlflow and mlflow-skinny
+pattern (two builds and two version numbers for a package installed from a git
+URL).
+Consequence: the `import-leaf` CI job, the `ImportError` wrappers that named
+an extra, and the "Using dsagt as a dependency" section are gone;
+`docs/developer.md` documents the collector's embedding arguments instead.
+Commits: d110869, b310d1b, de03c32
