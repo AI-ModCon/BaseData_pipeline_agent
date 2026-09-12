@@ -72,3 +72,27 @@ Positional forms for the common metrics (`aidrin run <metric> -h` prints each):
 Fairness-rate and privacy metrics assume sensitive attributes or
 quasi-identifiers; confirm with the user that the dataset has them before
 running those.
+
+## Batch (several metrics from one config)
+
+```bash
+... aidrin.py --report audit/batch.json batch <config.yaml>
+```
+
+The config is one flat mapping (YAML or JSON) whose keys are the same option
+names the metrics take on the command line; every listed metric reads the keys
+it needs from it. There is no per-metric block.
+
+```yaml
+file-path: data/adult.csv
+file-type: csv
+metrics: [completeness, class-imbalance, statistical-rates, representation-rate]
+target-column: income                 # class-imbalance
+y-true-column: income                 # statistical-rates
+sensitive-attribute-column: sex       # statistical-rates
+columns: [sex, race]                  # representation-rate, correlations
+```
+
+Other keys, used by the metrics that need them: `quasi-identifiers`,
+`sensitive-column`, `epsilon`, `id-column`, `eval-columns`,
+`categorical-columns`, `numerical-columns`.
