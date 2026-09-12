@@ -4,6 +4,19 @@ All notable changes to DSAgt are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- Intel Macs are no longer a supported platform. The `darwin/x86_64` entry in
+  `required-environments` held every environment on torch 2.2.2 and NumPy 1.x;
+  the lock now resolves torch 2.14, NumPy 2.x, transformers 5.x,
+  sentence-transformers 6.x, and tree-sitter-language-pack 1.16.
+- `requires-python` is `>=3.12` again; CI tests 3.12 and 3.13.
+- Dependencies are declared as ranges with a next-major cap, so dsagt
+  resolves beside a project that pins differently; `uv.lock` is tracked as
+  the reproducible environment. `ruyaml`, which nothing imported, is removed.
+
 ## [0.2.0] - 2026-07-08
 
 A large release. It adds an **external skill-catalog system**, consolidates the
